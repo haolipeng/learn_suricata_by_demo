@@ -104,7 +104,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                     }
                     break;
                 case TCP_OPT_SACK:
-                    //SCLogDebug("SACK option, len %u", olen);
+                    SCLogDebug("SACK option, len %u", olen);
                     if ((olen != 2) &&
                         (olen < TCP_OPT_SACK_MIN_LEN ||
                          olen > TCP_OPT_SACK_MAX_LEN ||
@@ -120,7 +120,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                     }
                     break;
                 case TCP_OPT_TFO:
-                    //SCLogDebug("TFO option, len %u", olen);
+                    SCLogDebug("TFO option, len %u", olen);
                     if ((olen != 2) && (olen < TCP_OPT_TFO_MIN_LEN || olen > TCP_OPT_TFO_MAX_LEN ||
                                         !(((olen - 2) & 0x1) == 0))) {
                         //ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
@@ -135,7 +135,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                     /* experimental options, could be TFO */
                 case TCP_OPT_EXP1:
                 case TCP_OPT_EXP2:
-                    //SCLogDebug("TCP EXP option, len %u", olen);
+                    SCLogDebug("TCP EXP option, len %u", olen);
                     if (olen == 4 || olen == 12) {
                         uint16_t magic = SCNtohs(*(uint16_t *)tcp_opts[tcp_opt_cnt].data);
                         if (magic == 0xf989) {
@@ -152,7 +152,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                     break;
                     /* RFC 2385 MD5 option */
                 case TCP_OPT_MD5:
-                    //SCLogDebug("MD5 option, len %u", olen);
+                    SCLogDebug("MD5 option, len %u", olen);
                     if (olen != 18) {
                         //ENGINE_SET_INVALID_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
@@ -162,7 +162,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                     break;
                     /* RFC 5925 AO option */
                 case TCP_OPT_AO:
-                    //SCLogDebug("AU option, len %u", olen);
+                    SCLogDebug("AU option, len %u", olen);
                     if (olen < 4) {
                         //ENGINE_SET_INVALID_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
@@ -218,7 +218,7 @@ static int DecodeTCPPacket(Packet *p, const uint8_t *pkt, uint16_t len)
 int DecodeTCP(Packet *p,const uint8_t *pkt, uint16_t len)
 {
     if (unlikely(DecodeTCPPacket(p, pkt,len) < 0)) {
-        //SCLogDebug("invalid TCP packet");
+        SCLogDebug("invalid TCP packet");
         CLEAR_TCP_PACKET(p);
         return TM_ECODE_FAILED;
     }

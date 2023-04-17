@@ -48,7 +48,7 @@ add_executable(net_threat_detect
         src/dpi/stream-tcp-inline.c src/dpi/stream-tcp-inline.h
         src/dpi/stream-tcp-sack.h src/dpi/stream-tcp-sack.c
         src/dpi/decode-ethernet.c
-        src/dpi/packet-queue.h src/dpi/packet-queue.c src/dpi/util-debug.c src/dpi/util-debug.h src/dpi/util-error.h src/dpi/util-error.c src/dpi/util-enum.h src/dpi/util-enum.c src/dpi/flow-worker.c src/dpi/decode-events.h src/dpi/stream-tcp.h src/dpi/flow-queue.h src/dpi/flow-queue.c src/dpi/threads.h src/dpi/util-atomic.h src/dpi/util-atomic.c src/dpi/tmqh-packetpool.h src/dpi/tmqh-packetpool.c src/dpi/util-optimize.h src/dpi/flow-timeout.c src/dpi/flow.c src/dpi/flow-spare-pool.h src/dpi/flow-spare-pool.c)
+        src/dpi/packet-queue.h src/dpi/packet-queue.c src/dpi/util-debug.c src/dpi/util-debug.h src/dpi/util-error.h src/dpi/util-error.c src/dpi/util-enum.h src/dpi/util-enum.c src/dpi/flow-worker.c src/dpi/decode-events.h src/dpi/stream-tcp.h src/dpi/flow-queue.h src/dpi/flow-queue.c src/dpi/threads.h src/dpi/util-atomic.h src/dpi/util-atomic.c src/dpi/tmqh-packetpool.h src/dpi/tmqh-packetpool.c src/dpi/util-optimize.h src/dpi/flow-timeout.c src/dpi/flow.c src/dpi/flow-spare-pool.h src/dpi/flow-spare-pool.c src/dpi/address-port.h src/dpi/queue.h src/dpi/packet-define.h src/dpi/decode-thread-var.h src/dpi/threadvars.h src/dpi/decode.c)
 
 target_link_libraries(net_threat_detect
         pthread

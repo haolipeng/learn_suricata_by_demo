@@ -5,9 +5,10 @@
 #ifndef NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H
 #define NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H
 
-#include "stream-tcp-private.h"
+#include "threadvars.h"
 #include "decode.h"
 #include "packet-queue.h"
+#include "stream-tcp-private.h"
 
 enum
 {
@@ -57,7 +58,46 @@ typedef struct TcpReassemblyThreadCtx_ {
     uint16_t counter_tcp_reass_list_fail;
 } TcpReassemblyThreadCtx;
 
+void StreamTcpReassembleInitMemuse(void);
 int StreamTcpReassembleHandleSegment(TcpSession *, TcpStream *, Packet *, PacketQueueNoLock *);
-int StreamTcpReassembleHandleSegmentHandleData(TcpSession *ssn, TcpStream *stream, Packet *p);
+int StreamTcpReassembleInit(char);
+void StreamTcpReassembleFree(char);
+TcpReassemblyThreadCtx *StreamTcpReassembleInitThreadCtx(ThreadVars *tv);
+void StreamTcpReassembleFreeThreadCtx(TcpReassemblyThreadCtx *);
+int StreamTcpReassembleAppLayer (ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,
+                                TcpSession *ssn, TcpStream *stream,
+                                Packet *p, enum StreamUpdateDir dir);
+
+void StreamTcpCreateTestPacket(uint8_t *, uint8_t, uint8_t, uint8_t);
+
+void StreamTcpSetSessionNoReassemblyFlag(TcpSession *, char);
+void StreamTcpSetSessionBypassFlag(TcpSession *);
+void StreamTcpSetDisableRawReassemblyFlag(TcpSession *, char);
+
+void StreamTcpSetOSPolicy(TcpStream *, Packet *);
+
+int StreamTcpReassembleHandleSegmentHandleData(ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,TcpSession *ssn, TcpStream *stream, Packet *p);
 int StreamTcpReassembleInsertSegment(TcpStream *, TcpSegment *, Packet *, uint32_t pkt_seq, uint8_t *pkt_data, uint16_t pkt_datalen);
+TcpSegment *StreamTcpGetSegment(ThreadVars *, TcpReassemblyThreadCtx *);
+
+void StreamTcpReturnStreamSegments(TcpStream *);
+void StreamTcpSegmentReturntoPool(TcpSegment *);
+
+void StreamTcpReassembleTriggerRawReassembly(TcpSession *, int direction);
+
+void StreamTcpPruneSession(Flow *, uint8_t);
+int StreamTcpReassembleDepthReached(Packet *p);
+
+void StreamTcpReassembleIncrMemuse(uint64_t size);
+void StreamTcpReassembleDecrMemuse(uint64_t size);
+int StreamTcpReassembleSetMemcap(uint64_t size);
+uint64_t StreamTcpReassembleGetMemcap(void);
+int StreamTcpReassembleCheckMemcap(uint64_t size);
+uint64_t StreamTcpReassembleMemuseGlobalCounter(void);
+
+void StreamTcpDisableAppLayer(Flow *f);
+int StreamTcpAppLayerIsDisabled(Flow *f);
+
+bool StreamReassembleRawHasDataReady(TcpSession *ssn, Packet *p);
+void StreamTcpReassemblySetMinInspectDepth(TcpSession *ssn, int direction, uint32_t depth);
 #endif //NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H

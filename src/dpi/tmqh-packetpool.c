@@ -315,7 +315,6 @@ void TmqhOutputPacketpool(ThreadVars *t, Packet *p)
 {
     bool proot = false;
 
-    SCEnter();
     SCLogDebug("Packet %p, p->root %p, alloced %s", p, p->root, p->flags & PKT_ALLOC ? "true" : "false");
 
     if (IS_TUNNEL_PKT(p)) {
@@ -349,7 +348,7 @@ void TmqhOutputPacketpool(ThreadVars *t, Packet *p)
 
                 PACKET_PROFILING_END(p);
                 SCMutexUnlock(m);
-                SCReturn;
+                return ;
             }
         } else {
             SCLogDebug("NOT IS_TUNNEL_ROOT_PKT, so tunnel pkt");
@@ -403,7 +402,7 @@ void TmqhOutputPacketpool(ThreadVars *t, Packet *p)
     PACKET_RELEASE_REFS(p);
     p->ReleasePacket(p);
 
-    SCReturn;
+    return;
 }
 
 /**

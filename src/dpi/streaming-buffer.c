@@ -23,9 +23,10 @@
 #include <stdio.h>
 #include <ctype.h>
 
-#include "streaming-buffer.h"
 #include "base.h"
 #include "common.h"
+#include "streaming-buffer.h"
+#include "util-debug.h"
 
 /**
  * \file
@@ -246,7 +247,7 @@ static inline void ConsolidateFwd(StreamingBuffer *sb,
             continue;
 
         const uint64_t tr_re = tr->offset + tr->len;
-        //SCLogDebug("-> (fwd) tr %p %"PRIu64"/%u re %"PRIu64,tr, tr->offset, tr->len, tr_re);
+        SCLogDebug("-> (fwd) tr %p %"PRIu64"/%u re %"PRIu64,tr, tr->offset, tr->len, tr_re);
 
         if (sa_re < tr->offset)
             break; // entirely before
@@ -264,7 +265,7 @@ static inline void ConsolidateFwd(StreamingBuffer *sb,
             sa->len = tr->len;
             sa->offset = tr->offset;
             sa_re = sa->offset + sa->len;
-            //SCLogDebug("-> (fwd) tr %p %"PRIu64"/%u REMOVED ECLIPSED2", tr, tr->offset, tr->len);
+            SCLogDebug("-> (fwd) tr %p %"PRIu64"/%u REMOVED ECLIPSED2", tr, tr->offset, tr->len);
             SBB_RB_REMOVE(tree, tr);
             FREE(sb->cfg, tr, sizeof(StreamingBufferBlock));
         /*
@@ -276,7 +277,7 @@ static inline void ConsolidateFwd(StreamingBuffer *sb,
             tr:    [   ]
         */
         } else if (sa->offset <= tr->offset && sa_re >= tr_re) {
-            //SCLogDebug("-> (fwd) tr %p %"PRIu64"/%u REMOVED ECLIPSED", tr, tr->offset, tr->len);
+            SCLogDebug("-> (fwd) tr %p %"PRIu64"/%u REMOVED ECLIPSED", tr, tr->offset, tr->len);
             SBB_RB_REMOVE(tree, tr);
             sb->sbb_size -= tr->len;
             FREE(sb->cfg, tr, sizeof(StreamingBufferBlock));
@@ -293,7 +294,7 @@ static inline void ConsolidateFwd(StreamingBuffer *sb,
             uint32_t combined_len = sa->len + tr->len;
             sa->len = tr_re - sa->offset;
             sa_re = sa->offset + sa->len;
-            //SCLogDebug("-> (fwd) tr %p %"PRIu64"/%u REMOVED MERGED", tr, tr->offset, tr->len);
+            SCLogDebug("-> (fwd) tr %p %"PRIu64"/%u REMOVED MERGED", tr, tr->offset, tr->len);
             SBB_RB_REMOVE(tree, tr);
             sb->sbb_size -= (combined_len - sa->len); // remove what we added twice
             FREE(sb->cfg, tr, sizeof(StreamingBufferBlock));
@@ -310,7 +311,7 @@ static inline void ConsolidateBackward(StreamingBuffer *sb,
         if (sa == tr)
             continue;
         const uint64_t tr_re = tr->offset + tr->len;
-        //SCLogDebug("-> (bwd) tr %p %"PRIu64"/%u", tr, tr->offset, tr->len);
+        SCLogDebug("-> (bwd) tr %p %"PRIu64"/%u", tr, tr->offset, tr->len);
 
         if (sa->offset > tr_re)
             break; // entirely after
@@ -320,7 +321,7 @@ static inline void ConsolidateBackward(StreamingBuffer *sb,
             sa->len = tr->len;
             sa->offset = tr->offset;
             sa_re = sa->offset + sa->len;
-            //SCLogDebug("-> (bwd) tr %p %"PRIu64"/%u REMOVED ECLIPSED2", tr, tr->offset, tr->len);
+            SCLogDebug("-> (bwd) tr %p %"PRIu64"/%u REMOVED ECLIPSED2", tr, tr->offset, tr->len);
             if (sb->head == tr)
                 sb->head = sa;
             SBB_RB_REMOVE(tree, tr);
@@ -334,7 +335,7 @@ static inline void ConsolidateBackward(StreamingBuffer *sb,
             tr: [         ]
         */
         } else if (sa->offset <= tr->offset && sa_re >= tr_re) {
-            //SCLogDebug("-> (bwd) tr %p %"PRIu64"/%u REMOVED ECLIPSED", tr, tr->offset, tr->len);
+            SCLogDebug("-> (bwd) tr %p %"PRIu64"/%u REMOVED ECLIPSED", tr, tr->offset, tr->len);
             if (sb->head == tr)
                 sb->head = sa;
             SBB_RB_REMOVE(tree, tr);
@@ -352,7 +353,7 @@ static inline void ConsolidateBackward(StreamingBuffer *sb,
             sa->len = sa_re - tr->offset;
             sa->offset = tr->offset;
             sa_re = sa->offset + sa->len;
-            //SCLogDebug("-> (bwd) tr %p %"PRIu64"/%u REMOVED MERGED", tr, tr->offset, tr->len);
+            SCLogDebug("-> (bwd) tr %p %"PRIu64"/%u REMOVED MERGED", tr, tr->offset, tr->len);
             if (sb->head == tr)
                 sb->head = sa;
             SBB_RB_REMOVE(tree, tr);
@@ -365,7 +366,7 @@ static inline void ConsolidateBackward(StreamingBuffer *sb,
 static int Insert(StreamingBuffer *sb, struct SBB *tree,
         uint32_t rel_offset, uint32_t len)
 {
-    //SCLogDebug("* inserting: %u/%u", rel_offset, len);
+    SCLogDebug("* inserting: %u/%u", rel_offset, len);
 
     StreamingBufferBlock *sbb = CALLOC(sb->cfg, 1, sizeof(*sbb));
     if (sbb == NULL)
@@ -375,7 +376,7 @@ static int Insert(StreamingBuffer *sb, struct SBB *tree,
     StreamingBufferBlock *res = SBB_RB_INSERT(tree, sbb);
     if (res) {
         // exact overlap
-        //SCLogDebug("* insert failed: exact match in tree with %p %"PRIu64"/%u", res, res->offset, res->len);
+        SCLogDebug("* insert failed: exact match in tree with %p %"PRIu64"/%u", res, res->offset, res->len);
         FREE(sb->cfg, sbb, sizeof(StreamingBufferBlock));
         return 0;
     }
@@ -411,7 +412,7 @@ static void SBBFree(StreamingBuffer *sb)
 
 static void SBBPrune(StreamingBuffer *sb)
 {
-    //SCLogDebug("pruning %p to %"PRIu64, sb, sb->stream_offset);
+    SCLogDebug("pruning %p to %"PRIu64, sb, sb->stream_offset);
     StreamingBufferBlock *sbb = NULL, *safe = NULL;
     RB_FOREACH_SAFE(sbb, SBB, &sb->sbb_tree, safe) {
         /* completely beyond window, we're done */
@@ -439,7 +440,7 @@ static void SBBPrune(StreamingBuffer *sb)
         /* either we set it again for the next sbb, or there isn't any */
         sb->head = NULL;
         sb->sbb_size -= sbb->len;
-        //SCLogDebug("sb %p removed %p %"PRIu64", %u", sb, sbb, sbb->offset, sbb->len);
+        SCLogDebug("sb %p removed %p %"PRIu64", %u", sb, sbb, sbb->offset, sbb->len);
         FREE(sb->cfg, sbb, sizeof(StreamingBufferBlock));
     }
 }
@@ -452,7 +453,7 @@ static void AutoSlide(StreamingBuffer *sb)
 {
     uint32_t size = sb->cfg->buf_slide;
     uint32_t slide = sb->buf_offset - size;
-    //SCLogDebug("sliding %u forward, size of original buffer left after slide %u", slide, size);
+    SCLogDebug("sliding %u forward, size of original buffer left after slide %u", slide, size);
     memmove(sb->buf, sb->buf+slide, size);
     sb->stream_offset += slide;
     sb->buf_offset = size;
@@ -490,7 +491,7 @@ static int GrowToSize(StreamingBuffer *sb, uint32_t size)
 
     sb->buf = ptr;
     sb->buf_size = grow;
-    //SCLogDebug("grown buffer to %u", grow);
+    SCLogDebug("grown buffer to %u", grow);
 #ifdef DEBUG
     if (sb->buf_size > sb->buf_size_max) {
         sb->buf_size_max = sb->buf_size;
@@ -532,7 +533,7 @@ static int Grow(StreamingBuffer *sb)
 
     sb->buf = ptr;
     sb->buf_size = grow;
-    //SCLogDebug("grown buffer to %u", grow);
+    SCLogDebug("grown buffer to %u", grow);
 #ifdef DEBUG
     if (sb->buf_size > sb->buf_size_max) {
         sb->buf_size_max = sb->buf_size;
@@ -552,7 +553,7 @@ void StreamingBufferSlideToOffset(StreamingBuffer *sb, uint64_t offset)
     {
         uint32_t slide = offset - sb->stream_offset;
         uint32_t size = sb->buf_offset - slide;
-        //SCLogDebug("sliding %u forward, size of original buffer left after slide %u", slide, size);
+        SCLogDebug("sliding %u forward, size of original buffer left after slide %u", slide, size);
         memmove(sb->buf, sb->buf+slide, size);
         sb->stream_offset += slide;
         sb->buf_offset = size;
@@ -563,7 +564,7 @@ void StreamingBufferSlideToOffset(StreamingBuffer *sb, uint64_t offset)
 void StreamingBufferSlide(StreamingBuffer *sb, uint32_t slide)
 {
     uint32_t size = sb->buf_offset - slide;
-    //SCLogDebug("sliding %u forward, size of original buffer left after slide %u", slide, size);
+    SCLogDebug("sliding %u forward, size of original buffer left after slide %u", slide, size);
     memmove(sb->buf, sb->buf+slide, size);
     sb->stream_offset += slide;
     sb->buf_offset = size;
@@ -736,18 +737,18 @@ int StreamingBufferInsertAt(StreamingBuffer *sb, StreamingBufferSegment *seg,
     seg->stream_offset = offset;
     seg->segment_len = data_len;
 
-    //SCLogDebug("rel_offset %u sb->stream_offset %"PRIu64", buf_offset %u",
-            //rel_offset, sb->stream_offset, sb->buf_offset);
+    SCLogDebug("rel_offset %u sb->stream_offset %"PRIu64", buf_offset %u",
+            rel_offset, sb->stream_offset, sb->buf_offset);
 
     if (RB_EMPTY(&sb->sbb_tree)) {
-        //SCLogDebug("empty sbb list");
+        SCLogDebug("empty sbb list");
 
         if (sb->stream_offset == offset) {
-            //SCLogDebug("empty sbb list: block exactly what was expected, fall through");
+            SCLogDebug("empty sbb list: block exactly what was expected, fall through");
             /* empty list, data is exactly what is expected (append),
              * so do nothing */
         } else if ((rel_offset + data_len) <= sb->buf_offset) {
-            //SCLogDebug("empty sbb list: block is within existing region");
+            SCLogDebug("empty sbb list: block is within existing region");
         } else {
             if (sb->buf_offset && rel_offset == sb->buf_offset) {
                 // nothing to do
@@ -758,7 +759,7 @@ int StreamingBufferInsertAt(StreamingBuffer *sb, StreamingBufferSegment *seg,
                 SBBInit(sb, rel_offset, data_len);
             } else {
                 /* gap before data in empty list */
-                //SCLogDebug("empty sbb list: invoking SBBInitLeadingGap");
+                SCLogDebug("empty sbb list: invoking SBBInitLeadingGap");
                 SBBInitLeadingGap(sb, offset, data_len);
             }
         }
@@ -945,7 +946,7 @@ int StreamingBufferCompareRawData(const StreamingBuffer *sb,
     {
         return 1;
     }
-    //SCLogDebug("sbdata_len %u, offset %"PRIu64, sbdata_len, offset);
+    SCLogDebug("sbdata_len %u, offset %"PRIu64, sbdata_len, offset);
     printf("got:\n");
     PrintRawDataFp(stdout, sbdata,sbdata_len);
     printf("wanted:\n");

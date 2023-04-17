@@ -28,7 +28,7 @@ void StreamTcpSackPruneList(TcpStream *stream)
     StreamTcpSackRecord *rec = NULL, *safe = NULL;
     RB_FOREACH_SAFE(rec, TCPSACK, &stream->sack_tree, safe) {
         if (SEQ_LT(rec->re, stream->last_ack)) {
-            //SCLogDebug("removing le %u re %u", rec->le, rec->re);
+            SCLogDebug("removing le %u re %u", rec->le, rec->re);
             stream->sack_size -= (rec->re - rec->le);
             TCPSACK_RB_REMOVE(&stream->sack_tree, rec);
 
@@ -38,14 +38,14 @@ void StreamTcpSackPruneList(TcpStream *stream)
                 free(rec);
             }
         } else if (SEQ_LT(rec->le, stream->last_ack)) {
-            //SCLogDebug("adjusting record to le %u re %u", rec->le, rec->re);
+            SCLogDebug("adjusting record to le %u re %u", rec->le, rec->re);
             /* last ack inside this record, update */
             stream->sack_size -= (rec->re - rec->le);
             rec->le = stream->last_ack;
             stream->sack_size += (rec->re - rec->le);
             break;
         } else {
-            //SCLogDebug("record beyond last_ack, nothing to do. Bailing out.");
+            SCLogDebug("record beyond last_ack, nothing to do. Bailing out.");
             break;
         }
     }
@@ -72,7 +72,7 @@ static inline void ConsolidateFwd(TcpStream *stream, struct TCPSACK *tree, struc
     RB_FOREACH_FROM(tr, TCPSACK, s) {
         if (sa == tr)
             continue;
-        //SCLogDebug("-> (fwd) tr %p %u/%u", tr, tr->le, tr->re);
+        SCLogDebug("-> (fwd) tr %p %u/%u", tr, tr->le, tr->re);
 
         if (SEQ_LT(sa->re, tr->le))
             break; // entirely before
@@ -83,7 +83,7 @@ static inline void ConsolidateFwd(TcpStream *stream, struct TCPSACK *tree, struc
             sa->re = tr->re;
             sa->le = tr->le;
             stream->sack_size += (sa->re - sa->le);
-            //SCLogDebug("-> (fwd) tr %p %u/%u REMOVED ECLIPSED2", tr, tr->le, tr->re);
+            SCLogDebug("-> (fwd) tr %p %u/%u REMOVED ECLIPSED2", tr, tr->le, tr->re);
             TCPSACK_RB_REMOVE(tree, tr);
             StreamTcpSackRecordFree(tr);
             /*
@@ -95,7 +95,7 @@ static inline void ConsolidateFwd(TcpStream *stream, struct TCPSACK *tree, struc
                 tr:    [   ]
             */
         } else if (SEQ_LEQ(sa->le, tr->le) && SEQ_GEQ(sa->re, tr->re)) {
-            //SCLogDebug("-> (fwd) tr %p %u/%u REMOVED ECLIPSED", tr, tr->le, tr->re);
+            SCLogDebug("-> (fwd) tr %p %u/%u REMOVED ECLIPSED", tr, tr->le, tr->re);
             stream->sack_size -= (tr->re - tr->le);
             TCPSACK_RB_REMOVE(tree, tr);
             StreamTcpSackRecordFree(tr);
@@ -113,7 +113,7 @@ static inline void ConsolidateFwd(TcpStream *stream, struct TCPSACK *tree, struc
             stream->sack_size -= (sa->re - sa->le);
             sa->re = tr->re;
             stream->sack_size += (sa->re - sa->le);
-            //SCLogDebug("-> (fwd) tr %p %u/%u REMOVED MERGED", tr, tr->le, tr->re);
+            SCLogDebug("-> (fwd) tr %p %u/%u REMOVED MERGED", tr, tr->le, tr->re);
             TCPSACK_RB_REMOVE(tree, tr);
             StreamTcpSackRecordFree(tr);
         }
@@ -127,7 +127,7 @@ static inline void ConsolidateBackward(TcpStream *stream,
     RB_FOREACH_REVERSE_FROM(tr, TCPSACK, s) {
         if (sa == tr)
             continue;
-        //SCLogDebug("-> (bwd) tr %p %u/%u", tr, tr->le, tr->re);
+        SCLogDebug("-> (bwd) tr %p %u/%u", tr, tr->le, tr->re);
 
         if (SEQ_GT(sa->le, tr->re))
             break; // entirely after
@@ -137,7 +137,7 @@ static inline void ConsolidateBackward(TcpStream *stream,
             sa->re = tr->re;
             sa->le = tr->le;
             stream->sack_size += (sa->re - sa->le);
-            //SCLogDebug("-> (bwd) tr %p %u/%u REMOVED ECLIPSED2", tr, tr->le, tr->re);
+            SCLogDebug("-> (bwd) tr %p %u/%u REMOVED ECLIPSED2", tr, tr->le, tr->re);
             TCPSACK_RB_REMOVE(tree, tr);
             StreamTcpSackRecordFree(tr);
             /*
@@ -149,7 +149,7 @@ static inline void ConsolidateBackward(TcpStream *stream,
                 tr: [         ]
             */
         } else if (SEQ_LEQ(sa->le, tr->le) && SEQ_GEQ(sa->re, tr->re)) {
-            //SCLogDebug("-> (bwd) tr %p %u/%u REMOVED ECLIPSED", tr, tr->le, tr->re);
+            SCLogDebug("-> (bwd) tr %p %u/%u REMOVED ECLIPSED", tr, tr->le, tr->re);
             stream->sack_size -= (tr->re - tr->le);
             TCPSACK_RB_REMOVE(tree, tr);
             StreamTcpSackRecordFree(tr);
@@ -165,7 +165,7 @@ static inline void ConsolidateBackward(TcpStream *stream,
             stream->sack_size -= (sa->re - sa->le);
             sa->le = tr->le;
             stream->sack_size += (sa->re - sa->le);
-            //SCLogDebug("-> (bwd) tr %p %u/%u REMOVED MERGED", tr, tr->le, tr->re);
+            SCLogDebug("-> (bwd) tr %p %u/%u REMOVED MERGED", tr, tr->le, tr->re);
             TCPSACK_RB_REMOVE(tree, tr);
             StreamTcpSackRecordFree(tr);
         }
@@ -174,7 +174,7 @@ static inline void ConsolidateBackward(TcpStream *stream,
 
 static int Insert(TcpStream *stream, struct TCPSACK *tree, uint32_t le, uint32_t re)
 {
-    //SCLogDebug("* inserting: %u/%u\n", le, re);
+    SCLogDebug("* inserting: %u/%u\n", le, re);
 
     struct StreamTcpSackRecord *sa = StreamTcpSackRecordAlloc();
     if (unlikely(sa == NULL))
@@ -184,7 +184,7 @@ static int Insert(TcpStream *stream, struct TCPSACK *tree, uint32_t le, uint32_t
     struct StreamTcpSackRecord *res = TCPSACK_RB_INSERT(tree, sa);
     if (res) {
         // exact overlap
-        //SCLogDebug("* insert failed: exact match in tree with %p %u/%u", res, res->le, res->re);
+        SCLogDebug("* insert failed: exact match in tree with %p %u/%u", res, res->le, res->re);
         StreamTcpSackRecordFree(sa);
         return 0;
     }
@@ -196,16 +196,16 @@ static int Insert(TcpStream *stream, struct TCPSACK *tree, uint32_t le, uint32_t
 
 static int StreamTcpSackInsertRange(TcpStream *stream, uint32_t le, uint32_t re)
 {
-    //SCLogDebug("le %u, re %u", le, re);
+    SCLogDebug("le %u, re %u", le, re);
 
     /* if to the left of last_ack then ignore */
     if (SEQ_LT(re, stream->last_ack)) {
-        //SCLogDebug("too far left. discarding");
+        SCLogDebug("too far left. discarding");
         return 0;
     }
     /* if to the right of the tcp window then ignore */
     if (SEQ_GT(le, (stream->last_ack + stream->window))) {
-        //SCLogDebug("too far right. discarding");
+        SCLogDebug("too far right. discarding");
         return 0;
     }
 
@@ -230,10 +230,10 @@ int StreamTcpSackUpdatePacket(TcpStream *stream, Packet *p)
         const uint32_t le = SCNtohl(sack_rec->le);
         const uint32_t re = SCNtohl(sack_rec->re);
 
-        //SCLogDebug("%p last_ack %u, left edge %u, right edge %u", sack_rec,stream->last_ack, le, re);
+        SCLogDebug("%p last_ack %u, left edge %u, right edge %u", sack_rec,stream->last_ack, le, re);
 
         if (SEQ_LEQ(re, stream->last_ack)) {
-            //SCLogDebug("record before last_ack");
+            SCLogDebug("record before last_ack");
             goto next;
         }
 
@@ -244,7 +244,7 @@ int StreamTcpSackUpdatePacket(TcpStream *stream, Packet *p)
         }
 
         if (SEQ_GEQ(le, re)) {
-            //SCLogDebug("invalid record: le >= re");
+            SCLogDebug("invalid record: le >= re");
             goto next;
         }
 

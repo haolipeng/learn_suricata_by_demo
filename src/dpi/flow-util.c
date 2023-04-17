@@ -30,18 +30,9 @@
 #include "flow-private.h"
 #include "flow-util.h"
 #include "flow-var.h"
-#include "app-layer.h"
 
 #include "util-var.h"
 #include "util-debug.h"
-#include "flow-storage.h"
-
-#include "detect.h"
-#include "detect-engine-state.h"
-
-#include "decode-icmpv4.h"
-
-#include "util-validate.h"
 
 /** \brief allocate a flow
  *
@@ -82,7 +73,7 @@ Flow *FlowAlloc(void)
 void FlowFree(Flow *f)
 {
     FLOW_DESTROY(f);
-    SCFree(f);
+    free(f);
 
     size_t size = sizeof(Flow) + FlowStorageSize();
     (void) SC_ATOMIC_SUB(flow_memuse, size);
@@ -144,7 +135,6 @@ static inline void FlowSetICMPv6CounterPart(Flow *f)
  * we see from it. */
 void FlowInit(Flow *f, const Packet *p)
 {
-    SCEnter();
     SCLogDebug("flow %p", f);
 
     f->proto = p->proto;
@@ -197,17 +187,7 @@ void FlowInit(Flow *f, const Packet *p)
     const uint32_t timeout_at = (uint32_t)f->startts.tv_sec + f->timeout_policy;
     f->timeout_at = timeout_at;
 
-    if (MacSetFlowStorageEnabled()) {
-        MacSet *ms = FlowGetStorageById(f, MacSetGetFlowStorageID());
-        if (ms != NULL) {
-            MacSetReset(ms);
-        } else {
-            ms = MacSetInit(10);
-            FlowSetStorageById(f, MacSetGetFlowStorageID(), ms);
-        }
-    }
-
-    SCReturn;
+    return;
 }
 
 FlowStorageId g_bypass_info_id = { .id = -1 };

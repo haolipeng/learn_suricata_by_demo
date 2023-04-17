@@ -432,7 +432,7 @@ static int DecodeIPV4Options(Packet *p, const uint8_t *pkt, uint16_t len, IPV4Op
                     }
                     break;
                 default:
-                    //SCLogDebug("IPV4OPT <unknown> (%" PRIu8 ") len %" PRIu8,opt.type, opt.len);
+                    SCLogDebug("IPV4OPT <unknown> (%" PRIu8 ") len %" PRIu8,opt.type, opt.len);
                     //ENGINE_SET_EVENT(p,IPV4_OPT_INVALID);
                     /* Warn - we can keep going */
                     break;
@@ -454,7 +454,7 @@ static int DecodeIPV4Packet(Packet *p, const uint8_t *pkt, uint16_t len)
     }
 
     if (unlikely(IP_GET_RAW_VER(pkt) != 4)) {
-        //SCLogDebug("wrong ip version %d",IP_GET_RAW_VER(pkt));
+        SCLogDebug("wrong ip version %d",IP_GET_RAW_VER(pkt));
         //ENGINE_SET_INVALID_EVENT(p, IPV4_WRONG_IP_VER);
         return -1;
     }
@@ -499,7 +499,7 @@ int DecodeIPV4(Packet *p,const uint8_t *pkt, uint16_t len)
 
     //ipv4数据包解析
     if (unlikely(DecodeIPV4Packet (p, pkt, len) < 0)) {
-        //SCLogDebug("decoding IPv4 packet failed");
+        SCLogDebug("decoding IPv4 packet failed");
         CLEAR_IPV4_PACKET((p));
         return TM_ECODE_FAILED;
     }

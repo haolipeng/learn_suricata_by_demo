@@ -504,7 +504,7 @@ static inline Flow *FlowSpareSync(ThreadVars *tv, FlowLookupStruct *fls,
 #endif
         if (spare_sync) {
             if (f != NULL) {
-                StatsAddUI64(tv, fls->dtv->counter_flow_spare_sync_avg, fls->spare_queue.len+1);
+                //StatsAddUI64(tv, fls->dtv->counter_flow_spare_sync_avg, fls->spare_queue.len+1);
                 if (fls->spare_queue.len < 99) {
                     StatsIncr(tv, fls->dtv->counter_flow_spare_sync_incomplete);
                 }
@@ -1066,7 +1066,7 @@ static Flow *FlowGetUsedFlow(ThreadVars *tv, DecodeThreadVars *dtv, const struct
 
     while (1) {
         if (tried++ > FLOW_GET_NEW_TRIES) {
-            STATSADDUI64(counter_flow_get_used_eval, tried);
+            //STATSADDUI64(counter_flow_get_used_eval, tried);
             break;
         }
         if (++idx >= flow_config.hash_size)
@@ -1078,7 +1078,7 @@ static Flow *FlowGetUsedFlow(ThreadVars *tv, DecodeThreadVars *dtv, const struct
             continue;
 
         if (GetUsedTryLockBucket(fb) != 0) {
-            STATSADDUI64(counter_flow_get_used_eval_busy, 1);
+            //STATSADDUI64(counter_flow_get_used_eval_busy, 1);
             continue;
         }
 
@@ -1089,7 +1089,7 @@ static Flow *FlowGetUsedFlow(ThreadVars *tv, DecodeThreadVars *dtv, const struct
         }
 
         if (GetUsedTryLockFlow(f) != 0) {
-            STATSADDUI64(counter_flow_get_used_eval_busy, 1);
+            //STATSADDUI64(counter_flow_get_used_eval_busy, 1);
             FBLOCK_UNLOCK(fb);
             continue;
         }
@@ -1097,14 +1097,14 @@ static Flow *FlowGetUsedFlow(ThreadVars *tv, DecodeThreadVars *dtv, const struct
         /** never prune a flow that is used by a packet or stream msg
          *  we are currently processing in one of the threads */
         if (f->use_cnt > 0) {
-            STATSADDUI64(counter_flow_get_used_eval_busy, 1);
+            //STATSADDUI64(counter_flow_get_used_eval_busy, 1);
             FBLOCK_UNLOCK(fb);
             FLOWLOCK_UNLOCK(f);
             continue;
         }
 
         if (StillAlive(f, ts)) {
-            STATSADDUI64(counter_flow_get_used_eval_reject, 1);
+            //STATSADDUI64(counter_flow_get_used_eval_reject, 1);
             FBLOCK_UNLOCK(fb);
             FLOWLOCK_UNLOCK(f);
             continue;
@@ -1136,10 +1136,10 @@ static Flow *FlowGetUsedFlow(ThreadVars *tv, DecodeThreadVars *dtv, const struct
 
         /* leave locked */
 
-        STATSADDUI64(counter_flow_get_used_eval, tried);
+        //STATSADDUI64(counter_flow_get_used_eval, tried);
         return f;
     }
 
-    STATSADDUI64(counter_flow_get_used_failed, 1);
+    //STATSADDUI64(counter_flow_get_used_failed, 1);
     return NULL;
 }

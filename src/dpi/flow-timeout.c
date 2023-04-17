@@ -1,4 +1,5 @@
 #include "decode.h"
+#include <pcap/dlt.h>
 
 #include "flow.h"
 #include "flow-queue.h"
@@ -50,7 +51,7 @@ static inline Packet *FlowForceReassemblyPseudoPacketSetup(Packet *p,
     p->vlan_id[0] = f->vlan_id[0];
     p->vlan_id[1] = f->vlan_id[1];
     p->vlan_idx = f->vlan_idx;
-    p->livedev = (struct LiveDevice_ *)f->livedev;
+    //p->livedev = (struct LiveDevice_ *)f->livedev;
 
     if (f->flags & FLOW_NOPACKET_INSPECTION) {
         DecodeSetNoPacketInspectionFlag(p);

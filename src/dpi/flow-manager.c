@@ -215,46 +215,6 @@ static int FlowManagerFlowTimeout(Flow *f, struct timeval *ts, int32_t *next_ts,
 static inline int FlowBypassedTimeout(Flow *f, struct timeval *ts,
                                       FlowTimeoutCounters *counters)
 {
-#ifdef CAPTURE_OFFLOAD
-    if (f->flow_state != FLOW_STATE_CAPTURE_BYPASSED) {
-        return 1;
-    }
-
-    FlowBypassInfo *fc = FlowGetStorageById(f, GetFlowBypassInfoID());
-    if (fc && fc->BypassUpdate) {
-        /* flow will be possibly updated */
-        uint64_t pkts_tosrc = fc->tosrcpktcnt;
-        uint64_t bytes_tosrc = fc->tosrcbytecnt;
-        uint64_t pkts_todst = fc->todstpktcnt;
-        uint64_t bytes_todst = fc->todstbytecnt;
-        bool update = fc->BypassUpdate(f, fc->bypass_data, ts->tv_sec);
-        if (update) {
-            SCLogDebug("Updated flow: %"PRId64"", FlowGetId(f));
-            pkts_tosrc = fc->tosrcpktcnt - pkts_tosrc;
-            bytes_tosrc = fc->tosrcbytecnt - bytes_tosrc;
-            pkts_todst = fc->todstpktcnt - pkts_todst;
-            bytes_todst = fc->todstbytecnt - bytes_todst;
-            if (f->livedev) {
-                SC_ATOMIC_ADD(f->livedev->bypassed,
-                        pkts_tosrc + pkts_todst);
-            }
-            counters->bypassed_pkts += pkts_tosrc + pkts_todst;
-            counters->bypassed_bytes += bytes_tosrc + bytes_todst;
-            return 0;
-        } else {
-            SCLogDebug("No new packet, dead flow %"PRId64"", FlowGetId(f));
-            if (f->livedev) {
-                if (FLOW_IS_IPV4(f)) {
-                    LiveDevSubBypassStats(f->livedev, 1, AF_INET);
-                } else if (FLOW_IS_IPV6(f)) {
-                    LiveDevSubBypassStats(f->livedev, 1, AF_INET6);
-                }
-            }
-            counters->bypassed_count++;
-            return 1;
-        }
-    }
-#endif /* CAPTURE_OFFLOAD */
     return 1;
 }
 
@@ -877,10 +837,10 @@ static TmEcode FlowManager(ThreadVars *th_v, void *thread_data)
                uint32_t hosts_spare = HostGetSpareCount();
                StatsSetUI64(th_v, flow_mgr_host_spare, (uint64_t)hosts_spare);
              */
-            StatsAddUI64(th_v, ftd->cnt.flow_mgr_cnt_clo, (uint64_t)counters.clo);
-            StatsAddUI64(th_v, ftd->cnt.flow_mgr_cnt_new, (uint64_t)counters.new);
-            StatsAddUI64(th_v, ftd->cnt.flow_mgr_cnt_est, (uint64_t)counters.est);
-            StatsAddUI64(th_v, ftd->cnt.flow_mgr_cnt_byp, (uint64_t)counters.byp);
+            //StatsAddUI64(th_v, ftd->cnt.flow_mgr_cnt_clo, (uint64_t)counters.clo);
+            //StatsAddUI64(th_v, ftd->cnt.flow_mgr_cnt_new, (uint64_t)counters.new);
+            //StatsAddUI64(th_v, ftd->cnt.flow_mgr_cnt_est, (uint64_t)counters.est);
+            //StatsAddUI64(th_v, ftd->cnt.flow_mgr_cnt_byp, (uint64_t)counters.byp);
 
             StatsAddUI64(th_v, ftd->cnt.flow_mgr_flows_checked, (uint64_t)counters.flows_checked);
             StatsAddUI64(th_v, ftd->cnt.flow_mgr_flows_notimeout, (uint64_t)counters.flows_notimeout);
@@ -1346,32 +1306,4 @@ again:
     /* reset count, so we can kill and respawn (unix socket) */
     SC_ATOMIC_SET(flowrec_cnt, 0);
     return;
-}
-
-void TmModuleFlowManagerRegister (void)
-{
-    tmm_modules[TMM_FLOWMANAGER].name = "FlowManager";
-    tmm_modules[TMM_FLOWMANAGER].ThreadInit = FlowManagerThreadInit;
-    tmm_modules[TMM_FLOWMANAGER].ThreadDeinit = FlowManagerThreadDeinit;
-    tmm_modules[TMM_FLOWMANAGER].Management = FlowManager;
-    tmm_modules[TMM_FLOWMANAGER].cap_flags = 0;
-    tmm_modules[TMM_FLOWMANAGER].flags = TM_FLAG_MANAGEMENT_TM;
-    SCLogDebug("%s registered", tmm_modules[TMM_FLOWMANAGER].name);
-
-    SC_ATOMIC_INIT(flowmgr_cnt);
-    SC_ATOMIC_INITPTR(flow_timeouts);
-}
-
-void TmModuleFlowRecyclerRegister (void)
-{
-    tmm_modules[TMM_FLOWRECYCLER].name = "FlowRecycler";
-    tmm_modules[TMM_FLOWRECYCLER].ThreadInit = FlowRecyclerThreadInit;
-    tmm_modules[TMM_FLOWRECYCLER].ThreadDeinit = FlowRecyclerThreadDeinit;
-    tmm_modules[TMM_FLOWRECYCLER].Management = FlowRecycler;
-    tmm_modules[TMM_FLOWRECYCLER].cap_flags = 0;
-    tmm_modules[TMM_FLOWRECYCLER].flags = TM_FLAG_MANAGEMENT_TM;
-    SCLogDebug("%s registered", tmm_modules[TMM_FLOWRECYCLER].name);
-
-    SC_ATOMIC_INIT(flowrec_cnt);
-    SC_ATOMIC_INIT(flowrec_busy);
 }

@@ -9,14 +9,20 @@
 #include <netinet/in.h>
 #include <limits.h>
 
+#include "address-port.h"
+#include "utils/helper.h"
+#include "packet-define.h"
+#include "decode-events.h"
+
 #include "decode-ethernet.h"
 #include "decode-ipv4.h"
 #include "decode-ipv6.h"
 #include "decode-udp.h"
 #include "decode-tcp.h"
+
 #include "flow.h"
-#include "utils/helper.h"
-#include "decode-events.h"
+#include "threadvars.h"
+#include "util-debug.h"
 
 enum PktSrcEnum {
     PKT_SRC_WIRE = 1,
@@ -33,206 +39,11 @@ enum PktSrcEnum {
     PKT_SRC_DECODER_GENEVE,
 };
 
-/* Address */
-typedef struct Address_ {
-    char family;
-    union {
-        uint32_t        address_un_data32[4]; /* type-specific field */
-        uint16_t        address_un_data16[8]; /* type-specific field */
-        uint8_t         address_un_data8[16]; /* type-specific field */
-        struct in6_addr address_un_in6;
-    } address;
-} Address;
-
-typedef uint16_t Port;
-
-typedef struct DecodeThreadVars_
-{
-    /** Specific context for udp protocol detection (here atm) */
-    //AppLayerThreadCtx *app_tctx;
-
-    /** stats/counters */
-    uint16_t counter_pkts;
-    uint16_t counter_bytes;
-    uint16_t counter_avg_pkt_size;
-    uint16_t counter_max_pkt_size;
-    uint16_t counter_max_mac_addrs_src;
-    uint16_t counter_max_mac_addrs_dst;
-
-    uint16_t counter_invalid;
-
-    uint16_t counter_eth;
-    uint16_t counter_chdlc;
-    uint16_t counter_ipv4;
-    uint16_t counter_ipv6;
-    uint16_t counter_tcp;
-    uint16_t counter_udp;
-    uint16_t counter_icmpv4;
-    uint16_t counter_icmpv6;
-
-    uint16_t counter_sll;
-    uint16_t counter_raw;
-    uint16_t counter_null;
-    uint16_t counter_sctp;
-    uint16_t counter_ppp;
-    uint16_t counter_geneve;
-    uint16_t counter_gre;
-    uint16_t counter_vlan;
-    uint16_t counter_vlan_qinq;
-    uint16_t counter_vxlan;
-    uint16_t counter_vntag;
-    uint16_t counter_ieee8021ah;
-    uint16_t counter_pppoe;
-    uint16_t counter_teredo;
-    uint16_t counter_mpls;
-    uint16_t counter_ipv4inipv6;
-    uint16_t counter_ipv6inipv6;
-    uint16_t counter_erspan;
-
-    /** frag stats - defrag runs in the context of the decoder. */
-    uint16_t counter_defrag_ipv4_fragments;
-    uint16_t counter_defrag_ipv4_reassembled;
-    uint16_t counter_defrag_ipv4_timeouts;
-    uint16_t counter_defrag_ipv6_fragments;
-    uint16_t counter_defrag_ipv6_reassembled;
-    uint16_t counter_defrag_ipv6_timeouts;
-    uint16_t counter_defrag_max_hit;
-
-    uint16_t counter_flow_memcap;
-
-    uint16_t counter_flow_tcp;
-    uint16_t counter_flow_udp;
-    uint16_t counter_flow_icmp4;
-    uint16_t counter_flow_icmp6;
-    uint16_t counter_flow_tcp_reuse;
-    uint16_t counter_flow_get_used;
-    uint16_t counter_flow_get_used_eval;
-    uint16_t counter_flow_get_used_eval_reject;
-    uint16_t counter_flow_get_used_eval_busy;
-    uint16_t counter_flow_get_used_failed;
-
-    uint16_t counter_flow_spare_sync;
-    uint16_t counter_flow_spare_sync_empty;
-    uint16_t counter_flow_spare_sync_incomplete;
-    uint16_t counter_flow_spare_sync_avg;
-
-    uint16_t counter_engine_events[DECODE_EVENT_MAX];
-
-    /* thread data for flow logging api: only used at forced
-     * flow recycle during lookups */
-    void *output_flow_thread_data;
-
-} DecodeThreadVars;
-
-typedef struct Packet_
-{
-    /* Addresses, Ports and protocol
-     * these are on top so we can use
-     * the Packet as a hash key */
-    Address src;
-    Address dst;
-    union {
-        Port sp;
-        // icmp type and code of this packet
-        struct {
-            uint8_t type;
-            uint8_t code;
-        } icmp_s;
-    };
-    union {
-        Port dp;
-        // icmp type and code of the expected counterpart (for flows)
-        struct {
-            uint8_t type;
-            uint8_t code;
-        } icmp_d;
-    };
-    uint8_t proto;
-
-    /* flow */
-    uint8_t flowflags;
-    /* coccinelle: Packet:flowflags:FLOW_PKT_ */
-
-    /* Pkt Flags */
-    uint32_t flags;
-
-    struct Flow_* flow;
-
-    /* raw hash value for looking up the flow, will need to modulated to the
-     * hash size still */
-    uint32_t flow_hash;
-
-    struct timeval ts;
-
-    /** The release function for packet structure and data */
-    void (*ReleasePacket)(struct Packet_ *);
-
-    /* header pointers */
-    EthernetHdr *ethh;
-    uint16_t eth_type;
-
-    /* Checksum for IP packets. */
-    int32_t level3_comp_csum;
-    /* Check sum for TCP, UDP or ICMP packets */
-    int32_t level4_comp_csum;
-
-    IPV4Hdr *ip4h;
-
-    IPV6Hdr *ip6h;
-
-    /* IPv4 and IPv6 are mutually exclusive */
-    union {
-        IPV4Vars ip4vars;
-        struct {
-            IPV6Vars ip6vars;
-            IPV6ExtHdrs ip6eh;
-        };
-    };
-    /* Can only be one of TCP, UDP, ICMP at any given time */
-    union {
-        TCPVars tcpvars;
-        //ICMPV4Vars icmpv4vars;
-        //ICMPV6Vars icmpv6vars;
-    } l4vars;
-#define tcpvars     l4vars.tcpvars
-#define icmpv4vars  l4vars.icmpv4vars
-#define icmpv6vars  l4vars.icmpv6vars
-
-    TCPHdr *tcph;
-
-    UDPHdr *udph;
-
-    //ICMPV4Hdr *icmpv4h;
-
-    //ICMPV6Hdr *icmpv6h;
-
-    uint8_t *payload;
-    uint16_t payload_len;
-
-    uint8_t pkt_src;
-
-    /* storage: set to pointer to heap and extended via allocation if necessary */
-    uint32_t pktlen;
-    uint8_t *ext_pkt;//什么作用?
-
-    /* double linked list ptrs */
-    struct Packet_ *next;
-    struct Packet_ *prev;
-
-    /** data linktype in host order */
-    int datalink;
-
-    uint8_t *ep_mac;
-
-    uint64_t id;
-
-    /* The Packet pool from which this packet was allocated. Used when returning
-     * the packet to its owner's stack. If NULL, then allocated with malloc.
-     */
-    struct PktPool_ *pool;
-} Packet;
-
 ////////////////////////////////全局函数声明区////////////////////////////////
+typedef struct ThreadVars_ ThreadVars;
+DecodeThreadVars *DecodeThreadVarsAlloc(ThreadVars *);
+void DecodeThreadVarsFree(ThreadVars *, DecodeThreadVars *);
+
 int DecodeEthernet(Packet *, const uint8_t *, uint32_t);
 int DecodeIPV4(Packet *, const uint8_t *, uint16_t);
 int DecodeIPV6(Packet *, const uint8_t *, uint16_t);
@@ -243,8 +54,8 @@ int DecodeTCP(Packet *, const uint8_t *, uint16_t);
 #define PKT_IS_IPV6(p)      (((p)->ip6h != NULL))
 #define PKT_IS_TCP(p)       (((p)->tcph != NULL))
 #define PKT_IS_UDP(p)       (((p)->udph != NULL))
-#define PKT_IS_ICMPV4(p)    (((p)->icmpv4h != NULL))
-#define PKT_IS_ICMPV6(p)    (((p)->icmpv6h != NULL))
+//#define PKT_IS_ICMPV4(p)    (((p)->icmpv4h != NULL))
+//#define PKT_IS_ICMPV6(p)    (((p)->icmpv6h != NULL))
 #define PKT_IS_TOSERVER(p)  (((p)->flowflags & FLOW_PKT_TOSERVER))
 #define PKT_IS_TOCLIENT(p)  (((p)->flowflags & FLOW_PKT_TOCLIENT))
 
@@ -379,6 +190,13 @@ int DecodeTCP(Packet *, const uint8_t *, uint16_t);
 typedef uint16_t Port;
 #define SET_PORT(v, p) ((p) = (v))
 #define COPY_PORT(a,b) ((b) = (a))
+#define CMP_ADDR(a1, a2) \
+    (((a1)->addr_data32[3] == (a2)->addr_data32[3] && \
+      (a1)->addr_data32[2] == (a2)->addr_data32[2] && \
+      (a1)->addr_data32[1] == (a2)->addr_data32[1] && \
+      (a1)->addr_data32[0] == (a2)->addr_data32[0]))
+#define CMP_PORT(p1, p2) \
+    ((p1) == (p2))
 
 /*Given a packet pkt offset to the start of the ip header in a packet
  *We determine the ip version. */
@@ -391,6 +209,86 @@ typedef uint16_t Port;
 /** libpcap shows us the way to linktype codes
  * \todo we need more & maybe put them in a separate file? */
 #define LINKTYPE_ETHERNET    1 //TODO:modify by haolipeng #define DLT_EN10MB	1	/* Ethernet (10Mb) */
+
+/* if p uses extended data, free them */
+#define PACKET_FREE_EXTDATA(p) do {                 \
+        if ((p)->ext_pkt) {                         \
+            if (!((p)->flags & PKT_ZERO_COPY)) {    \
+                free((p)->ext_pkt);               \
+            }                                       \
+            (p)->ext_pkt = NULL;                    \
+        }                                           \
+    } while(0)
+
+#define PACKET_REINIT(p)                                                                           \
+    do {                                                                                           \
+        CLEAR_ADDR(&(p)->src);                                                                     \
+        CLEAR_ADDR(&(p)->dst);                                                                     \
+        (p)->sp = 0;                                                                               \
+        (p)->dp = 0;                                                                               \
+        (p)->proto = 0;                                                                            \
+        PACKET_FREE_EXTDATA((p));                                                                  \
+        (p)->flags = (p)->flags & PKT_ALLOC;                                                       \
+        (p)->flowflags = 0;                                                                        \
+        (p)->pkt_src = 0;                                                                          \
+        (p)->vlan_id[0] = 0;                                                                       \
+        (p)->vlan_id[1] = 0;                                                                       \
+        (p)->vlan_idx = 0;                                                                         \
+        (p)->ts.tv_sec = 0;                                                                        \
+        (p)->ts.tv_usec = 0;                                                                       \
+        (p)->datalink = 0;                                                                         \
+        if ((p)->pktvar != NULL) {                                                                 \
+            PktVarFree((p)->pktvar);                                                               \
+            (p)->pktvar = NULL;                                                                    \
+        }                                                                                          \
+        (p)->ethh = NULL;                                                                          \
+        if ((p)->ip4h != NULL) {                                                                   \
+            CLEAR_IPV4_PACKET((p));                                                                \
+        }                                                                                          \
+        if ((p)->ip6h != NULL) {                                                                   \
+            CLEAR_IPV6_PACKET((p));                                                                \
+        }                                                                                          \
+        if ((p)->tcph != NULL) {                                                                   \
+            CLEAR_TCP_PACKET((p));                                                                 \
+        }                                                                                          \
+        if ((p)->udph != NULL) {                                                                   \
+            CLEAR_UDP_PACKET((p));                                                                 \
+        }                                                                                          \
+        if ((p)->sctph != NULL) {                                                                  \
+            CLEAR_SCTP_PACKET((p));                                                                \
+        }                                                                                          \
+        if ((p)->icmpv4h != NULL) {                                                                \
+            CLEAR_ICMPV4_PACKET((p));                                                              \
+        }                                                                                          \
+        if ((p)->icmpv6h != NULL) {                                                                \
+            CLEAR_ICMPV6_PACKET((p));                                                              \
+        }                                                                                          \
+        (p)->ppph = NULL;                                                                          \
+        (p)->pppoesh = NULL;                                                                       \
+        (p)->pppoedh = NULL;                                                                       \
+        (p)->greh = NULL;                                                                          \
+        (p)->payload = NULL;                                                                       \
+        (p)->payload_len = 0;                                                                      \
+        (p)->BypassPacketsFlow = NULL;                                                             \
+        (p)->pktlen = 0;                                                                           \
+        (p)->alerts.cnt = 0;                                                                       \
+        (p)->alerts.discarded = 0;                                                                 \
+        (p)->alerts.suppressed = 0;                                                                \
+        (p)->alerts.drop.action = 0;                                                               \
+        (p)->pcap_cnt = 0;                                                                         \
+        (p)->tunnel_rtv_cnt = 0;                                                                   \
+        (p)->tunnel_tpr_cnt = 0;                                                                   \
+        (p)->events.cnt = 0;                                                                       \
+        AppLayerDecoderEventsResetEvents((p)->app_layer_events);                                   \
+        (p)->next = NULL;                                                                          \
+        (p)->prev = NULL;                                                                          \
+        (p)->root = NULL;                                                                          \
+        (p)->livedev = NULL;                                                                       \
+        PACKET_RESET_CHECKSUMS((p));                                                               \
+        PACKET_PROFILING_RESET((p));                                                               \
+        p->tenant_id = 0;                                                                          \
+        p->nb_decoded_layers = 0;                                                                  \
+    } while (0)
 
 static inline bool DecodeNetworkLayer(const uint16_t proto, Packet *p, const uint8_t *data, const uint32_t len)
 {
@@ -407,7 +305,7 @@ static inline bool DecodeNetworkLayer(const uint16_t proto, Packet *p, const uin
             break;
         }
         default:
-            //SCLogDebug("unknown ether type: %" PRIx16 "", proto);
+            SCLogDebug("unknown ether type: %" PRIx16 "", proto);
             return false;
     }
     return true;

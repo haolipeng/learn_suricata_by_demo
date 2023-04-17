@@ -38,26 +38,26 @@ int StreamTcpInlineSegmentCompare(const TcpStream *stream,const Packet *p, const
     } else if (SEQ_GT(seg->seq, (pkt_seq + p->payload_len))) {
         return (0);
     } else {
-        /*SCLogDebug("p %u (%u), seg2 %u (%u)", pkt_seq,
+        SCLogDebug("p %u (%u), seg2 %u (%u)", pkt_seq,
                    p->payload_len, seg->seq, seg_datalen);
-*/
+
         uint32_t pkt_end = pkt_seq + p->payload_len;
         uint32_t seg_end = seg->seq + seg_datalen;
-        //SCLogDebug("pkt_end %u, seg_end %u", pkt_end, seg_end);
+        SCLogDebug("pkt_end %u, seg_end %u", pkt_end, seg_end);
 
         /* get the minimal seg*_end */
         uint32_t end = (SEQ_GT(pkt_end, seg_end)) ? seg_end : pkt_end;
         /* and the max seq */
         uint32_t seq = (SEQ_LT(pkt_seq, seg->seq)) ? seg->seq : pkt_seq;
 
-        //SCLogDebug("seq %u, end %u", seq, end);
+        SCLogDebug("seq %u, end %u", seq, end);
 
         uint16_t pkt_off = seq - pkt_seq;
         uint16_t seg_off = seq - seg->seq;
-        //SCLogDebug("pkt_off %u, seg_off %u", pkt_off, seg_off);
+        SCLogDebug("pkt_off %u, seg_off %u", pkt_off, seg_off);
 
         uint32_t range = end - seq;
-        //SCLogDebug("range %u", range);
+        SCLogDebug("range %u", range);
         BUG_ON(range > 65536);
 
         if (range) {

@@ -5,8 +5,12 @@
 #ifndef NET_THREAT_DETECT_FLOW_H
 #define NET_THREAT_DETECT_FLOW_H
 
-#include "decode.h"
 #include "threads.h"
+#include "base.h"
+
+/* Part of the flow structure, so we declare it here.
+ * The actual declaration is in app-layer-parser.c */
+typedef struct AppLayerParserState_ AppLayerParserState;
 
 #define FLOW_PKT_TOSERVER               0x01
 #define FLOW_PKT_TOCLIENT               0x02
@@ -244,6 +248,40 @@
 #error Enable FLOWLOCK_RWLOCK or FLOWLOCK_MUTEX
 #endif
 
+/* Hash key for the flow hash */
+#include "packet-define.h"
+#include "util-var.h"
+#include "decode-thread-var.h"
+#include "app-layer-protos.h"
+#include "util-atomic.h"
+
+/* global flow config */
+typedef struct FlowCnf_
+{
+  uint32_t hash_rand;
+  uint32_t hash_size;
+  uint32_t max_flows;
+  uint32_t prealloc;
+
+  uint32_t timeout_new;
+  uint32_t timeout_est;
+
+  uint32_t emerg_timeout_new;
+  uint32_t emerg_timeout_est;
+  uint32_t emergency_recovery;
+
+  SC_ATOMIC_DECLARE(uint64_t, memcap);
+} FlowConfig;
+
+typedef struct FlowKey_
+{
+    Address src, dst;
+    Port sp, dp;
+    uint8_t proto;
+    uint8_t recursion_level;
+    uint16_t vlan_id[2];
+} FlowKey;
+
 typedef struct FlowAddress_ {
     union {
         uint32_t       address_un_data32[4]; /* type-specific field */
@@ -260,116 +298,185 @@ typedef unsigned short FlowRefCount;
 
 typedef unsigned short FlowStateType;
 
-typedef uint16_t Port;
-
 /** Local Thread ID */
 typedef uint16_t FlowThreadId;
-
-typedef struct Flow_ {
-    /* flow "header", used for hashing and flow lookup. Static after init,
+typedef struct Flow_
+{
+  /* flow "header", used for hashing and flow lookup. Static after init,
      * so safe to look at without lock */
-    FlowAddress src, dst;
-    union {
-        Port sp;        /**< tcp/udp source port */
-        struct {
-            uint8_t type;   /**< icmp type */
-            uint8_t code;   /**< icmp code */
-        } icmp_s;
-    };
-    union {
-        Port dp;        /**< tcp/udp destination port */
-        struct {
-            uint8_t type;   /**< icmp type */
-            uint8_t code;   /**< icmp code */
-        } icmp_d;
-    };
-    uint8_t proto;
-    uint8_t recursion_level;
-    uint16_t vlan_id[2];
-    /** how many references exist to this flow *right now*
+  FlowAddress src, dst;
+  union {
+    Port sp;        /**< tcp/udp source port */
+    struct {
+      uint8_t type;   /**< icmp type */
+      uint8_t code;   /**< icmp code */
+    } icmp_s;
+  };
+  union {
+    Port dp;        /**< tcp/udp destination port */
+    struct {
+      uint8_t type;   /**< icmp type */
+      uint8_t code;   /**< icmp code */
+    } icmp_d;
+  };
+  uint8_t proto;
+  uint8_t recursion_level;
+  uint16_t vlan_id[2];
+  /** how many references exist to this flow *right now*
      *
      *  On receiving a packet the counter is incremented while the flow
      *  bucked is locked, which is also the case on timeout pruning.
-     */
-    FlowRefCount use_cnt;
+   */
+  FlowRefCount use_cnt;
 
-    uint8_t vlan_idx;
+  uint8_t vlan_idx;
 
-    /* track toserver/toclient flow timeout needs */
-    union {
-        struct {
-            uint8_t ffr_ts:4;
-            uint8_t ffr_tc:4;
-        };
-        uint8_t ffr;
+  /* track toserver/toclient flow timeout needs */
+  union {
+    struct {
+      uint8_t ffr_ts:4;
+      uint8_t ffr_tc:4;
     };
+    uint8_t ffr;
+  };
 
-    /** timestamp in seconds of the moment this flow will timeout
+  /** timestamp in seconds of the moment this flow will timeout
      *  according to the timeout policy. Does *not* take emergency
      *  mode into account. */
-    uint32_t timeout_at;
+  uint32_t timeout_at;
 
-    /** Thread ID for the stream/detect portion of this flow */
-    FlowThreadId thread_id[2];
+  /** Thread ID for the stream/detect portion of this flow */
+  FlowThreadId thread_id[2];
 
-    struct Flow_ *next; /* (hash) list next */
+  struct Flow_ *next; /* (hash) list next */
+  /** Incoming interface */
+  struct LiveDevice_ *livedev;
 
-    /** Incoming interface */
-    struct LiveDevice_ *livedev;
+  /** flow hash - the flow hash before hash table size mod. */
+  uint32_t flow_hash;
 
-    /** flow hash - the flow hash before hash table size mod. */
-    uint32_t flow_hash;
-
-    /* time stamp of last update (last packet). Set/updated under the
+  /* time stamp of last update (last packet). Set/updated under the
      * flow and flow hash row locks, safe to read under either the
      * flow lock or flow hash row lock. */
-    struct timeval lastts;
+  struct timeval lastts;
 
-    /* end of flow "header" */
+  /* end of flow "header" */
 
-    /** timeout policy value in seconds to add to the lastts.tv_sec
+  /** timeout policy value in seconds to add to the lastts.tv_sec
      *  when a packet has been received. */
-    uint32_t timeout_policy;
+  uint32_t timeout_policy;
 
-    FlowStateType flow_state;
+  FlowStateType flow_state;
 
-    uint32_t flags;         /**< generic flags */
+  /** flow tenant id, used to setup flow timeout and stream pseudo
+     *  packets with the correct tenant id set */
+  uint32_t tenant_id;
+
+  uint32_t probing_parser_toserver_alproto_masks;
+  uint32_t probing_parser_toclient_alproto_masks;
+
+  uint32_t flags;         /**< generic flags */
+
+  uint16_t file_flags;    /**< file tracking/extraction flags */
+
+  /** destination port to be used in protocol detection. This is meant
+     *  for use with STARTTLS and HTTP CONNECT detection */
+  uint16_t protodetect_dp; /**< 0 if not used */
+
+  /* Parent flow id for protocol like ftp */
+  int64_t parent_id;
 
 #ifdef FLOWLOCK_RWLOCK
-    SCRWLock r;
+  SCRWLock r;
 #elif defined FLOWLOCK_MUTEX
-    SCMutex m;
+  SCMutex m;
 #else
 #error Enable FLOWLOCK_RWLOCK or FLOWLOCK_MUTEX
 #endif
 
-    //协议特定的数据指针，例如对于 TcpSession
-    void *protoctx;
+  /** protocol specific data pointer, e.g. for TcpSession */
+  //协议特定的数据指针，例如对于 TcpSession
+  void *protoctx;
 
-    /** mapping to Flow's protocol specific protocols for timeouts
-        and state and free functions. */
-    uint8_t protomap;
+  /** mapping to Flow's protocol specific protocols for timeouts
+      and state and free functions. */
+  uint8_t protomap;
 
-    uint8_t flow_end_flags;
-    /* coccinelle: Flow:flow_end_flags:FLOW_END_FLAG_ */
-}Flow;
+  uint8_t flow_end_flags;
+  /* coccinelle: Flow:flow_end_flags:FLOW_END_FLAG_ */
+
+  AppProto alproto; /**< \brief application level protocol */
+  AppProto alproto_ts;
+  AppProto alproto_tc;
+
+  /** original application level protocol. Used to indicate the previous
+     protocol when changing to another protocol , e.g. with STARTTLS. */
+  AppProto alproto_orig;
+  /** expected app protocol: used in protocol change/upgrade like in
+     *  STARTTLS. */
+  AppProto alproto_expect;
+
+  /** detection engine ctx version used to inspect this flow. Set at initial
+     *  inspection. If it doesn't match the currently in use de_ctx, the
+     *  stored sgh ptrs are reset. */
+  uint32_t de_ctx_version;
+
+  /** ttl tracking */
+  uint8_t min_ttl_toserver;
+  uint8_t max_ttl_toserver;
+  uint8_t min_ttl_toclient;
+  uint8_t max_ttl_toclient;
+
+  /** application level storage ptrs.
+     *
+   */
+  AppLayerParserState *alparser;     /**< parser internal state */
+  void *alstate;      /**< application layer state */
+
+  /** toclient sgh for this flow. Only use when FLOW_SGH_TOCLIENT flow flag
+     *  has been set. */
+  const struct SigGroupHead_ *sgh_toclient;
+  /** toserver sgh for this flow. Only use when FLOW_SGH_TOSERVER flow flag
+     *  has been set. */
+  const struct SigGroupHead_ *sgh_toserver;
+
+  /* pointer to the var list */
+  GenericVar *flowvar;
+
+  struct FlowBucket_ *fb;
+
+  struct timeval startts;
+
+  uint32_t todstpktcnt;
+  uint32_t tosrcpktcnt;
+  uint64_t todstbytecnt;
+  uint64_t tosrcbytecnt;
+} Flow;
 
 enum FlowState {
     FLOW_STATE_NEW = 0,
     FLOW_STATE_ESTABLISHED,
     FLOW_STATE_CLOSED,
     FLOW_STATE_LOCAL_BYPASSED,
-#ifdef CAPTURE_OFFLOAD
-    FLOW_STATE_CAPTURE_BYPASSED,
-#endif
 };
+
+typedef struct FlowProtoTimeout_ {
+  uint32_t new_timeout;
+  uint32_t est_timeout;
+  uint32_t closed_timeout;
+  uint32_t bypassed_timeout;
+} FlowProtoTimeout;
+
+typedef struct FlowProtoFreeFunc_ {
+  void (*Freefunc)(void *);
+} FlowProtoFreeFunc;
 
 #include "flow-queue.h"
 typedef struct FlowLookupStruct_ // TODO name
 {
     /** thread store of spare queues */
     FlowQueuePrivate spare_queue;
-    //DecodeThreadVars *dtv;
+    DecodeThreadVars *dtv;
     FlowQueuePrivate work_queue;
     uint32_t emerg_spare_sync_stamp;
 } FlowLookupStruct;
@@ -422,5 +529,7 @@ static inline bool FlowIsBypassed(const Flow *f)
 
 //函数声明区
 int FlowClearMemory(Flow *,uint8_t );
-
+void FlowHandlePacketUpdate(Flow *f, Packet *p, DecodeThreadVars *dtv);
+void FlowCleanupAppLayer(Flow *);
+int FlowChangeProto(Flow *);
 #endif //NET_THREAT_DETECT_FLOW_H

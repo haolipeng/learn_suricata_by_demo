@@ -61,10 +61,10 @@ static inline int InsertSegmentDataCustom(TcpStream *stream, TcpSegment *seg, ui
         stream_offset = STREAM_BASE_OFFSET(stream);
     }
 
-    /*SCLogDebug("stream %p buffer %p, stream_offset %"PRIu64", "
+    SCLogDebug("stream %p buffer %p, stream_offset %"PRIu64", "
                "data_offset %"PRIu16", SEQ %u BASE %u, data_len %u",
                stream, &stream->sb, stream_offset,
-               data_offset, seg->seq, stream->base_seq, data_len);*/
+               data_offset, seg->seq, stream->base_seq, data_len);
     BUG_ON(data_offset > data_len);
     if (data_len == data_offset) {
         return 0;
@@ -112,7 +112,7 @@ static inline bool CheckOverlap(struct TCPSEG *tree, TcpSegment *seg)
             return true;
     }
 
-    //SCLogDebug("no overlap");
+    SCLogDebug("no overlap");
     return false;
 }
 
@@ -164,11 +164,11 @@ static int DoInsertSegment (TcpStream *stream, TcpSegment *seg, TcpSegment **dup
         /* insert succeeded, now check if we overlap with someone */
         // 数据覆盖检测
         if (CheckOverlap(&stream->seg_tree, seg) == true) {
-            //SCLogDebug("seg %u has overlap in the tree", seg->seq);
+            SCLogDebug("seg %u has overlap in the tree", seg->seq);
             return 1;
         }
     }
-    //SCLogDebug("seg %u: no overlap", seg->seq);
+    SCLogDebug("seg %u: no overlap", seg->seq);
     return 0;
 }
 
@@ -185,7 +185,7 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
 
     if (check_overlap_different_data) {
         if (StreamTcpInlineSegmentCompare(stream, p, list) != 0) {
-            //SCLogDebug("data is different from what is in the list");
+            SCLogDebug("data is different from what is in the list");
             data_is_different = 1;
         }
     } else {
@@ -203,13 +203,13 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
 
     /* start at the same seq */
     if (SEQ_EQ(seg->seq, list->seq)) {
-        //SCLogDebug("seg starts at list segment");
+        SCLogDebug("seg starts at list segment");
 
         if (SEQ_LT(SEG_SEQ_RIGHT_EDGE(seg), SEG_SEQ_RIGHT_EDGE(list))) {
-            //SCLogDebug("seg ends before list end, end overlapped by list");
+            SCLogDebug("seg ends before list end, end overlapped by list");
         } else {
             if (SEQ_GT(SEG_SEQ_RIGHT_EDGE(seg), SEG_SEQ_RIGHT_EDGE(list))) {
-                //SCLogDebug("seg ends beyond list end, list overlapped and more");
+                SCLogDebug("seg ends beyond list end, list overlapped and more");
                 switch (stream->os_policy) {
                     case OS_POLICY_LINUX:
                         if (data_is_different) {
@@ -218,7 +218,7 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
                         break;
                 }
             } else {
-                //SCLogDebug("full overlap");
+                SCLogDebug("full overlap");
             }
 
             switch (stream->os_policy) {
@@ -234,15 +234,15 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
 
         /* new seg starts before list segment */
     } else if (SEQ_LT(seg->seq, list->seq)) {
-        //SCLogDebug("seg starts before list segment");
+        SCLogDebug("seg starts before list segment");
 
         if (SEQ_LT(SEG_SEQ_RIGHT_EDGE(seg), SEG_SEQ_RIGHT_EDGE(list))) {
-            //SCLogDebug("seg ends before list end, end overlapped by list");
+            SCLogDebug("seg ends before list end, end overlapped by list");
         } else {
             if (SEQ_GT(SEG_SEQ_RIGHT_EDGE(seg), SEG_SEQ_RIGHT_EDGE(list))) {
-                //SCLogDebug("seg starts before and fully overlaps list and beyond");
+                SCLogDebug("seg starts before and fully overlaps list and beyond");
             } else {
-                //SCLogDebug("seg starts before and fully overlaps list");
+                SCLogDebug("seg starts before and fully overlaps list");
             }
 
             switch (stream->os_policy) {
@@ -272,12 +272,12 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
 
         /* new seg starts after list segment */
     } else { //if (SEQ_GT(seg->seq, list->seq)) {
-        //SCLogDebug("seg starts after list segment");
+        SCLogDebug("seg starts after list segment");
 
         if (SEQ_EQ(SEG_SEQ_RIGHT_EDGE(seg), SEG_SEQ_RIGHT_EDGE(list))) {
-            //SCLogDebug("seg after and is fully overlapped by list");
+            SCLogDebug("seg after and is fully overlapped by list");
         } else if (SEQ_GT(SEG_SEQ_RIGHT_EDGE(seg), SEG_SEQ_RIGHT_EDGE(list))) {
-            //SCLogDebug("seg starts after list and ends after list");
+            SCLogDebug("seg starts after list and ends after list");
 
             switch (stream->os_policy) {
                 case OS_POLICY_SOLARIS:
@@ -288,7 +288,7 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
                     break;
             }
         } else {
-            //SCLogDebug("seg starts after list and ends before list end");
+            SCLogDebug("seg starts after list and ends before list end");
         }
     }
 
@@ -333,7 +333,7 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
         if (SEQ_LT(seg->seq + seg_offset + seg_len, list_seq + list_offset + list_len)) {
             list_len -= (list_seq + list_offset + list_len) - (seg->seq + seg_offset + seg_len);
         }
-        //SCLogDebug("here goes nothing: list %u %u, seg %u %u", list_offset, list_len, seg_offset, seg_len);
+        SCLogDebug("here goes nothing: list %u %u, seg %u %u", list_offset, list_len, seg_offset, seg_len);
 
         //PrintRawDataFp(stdout, list_data + list_offset, list_len);
         //PrintRawDataFp(stdout, buf + seg_offset, seg_len);
@@ -369,7 +369,7 @@ static int DoHandleDataCheckBackwards(TcpStream *stream,
             // segment entirely before base_seq
             ;
         } else if (SEQ_LEQ(tree_seg->seq + tree_seg->payload_len, seg->seq)) {
-            //SCLogDebug("list segment too far to the left, no more overlap will be found");
+            SCLogDebug("list segment too far to the left, no more overlap will be found");
             break;
         } else if (SEQ_GT(SEG_SEQ_RIGHT_EDGE(tree_seg), seg->seq)) {
             overlap = 1;
@@ -500,11 +500,11 @@ int StreamTcpReassembleInsertSegment(TcpStream *stream, TcpSegment *seg, Packet 
 
     /* insert segment into list. Note: doesn't handle the data */
     int r = DoInsertSegment (stream, seg, &dup_seg, p);
-    //SCLogDebug("DoInsertSegment returned %d", r);
+    SCLogDebug("DoInsertSegment returned %d", r);
     if (r < 0) {
         //StatsIncr(tv, ra_ctx->counter_tcp_reass_list_fail);
         //TODO:modify by haolipeng
-        //StreamTcpSegmentReturntoPool(seg);
+        StreamTcpSegmentReturntoPool(seg);
         return -1;
     }
 
@@ -526,10 +526,10 @@ int StreamTcpReassembleInsertSegment(TcpStream *stream, TcpSegment *seg, Packet 
         }
 
     } else if (r == 1 || r == 2) {
-        //SCLogDebug("overlap (%s%s)", r == 1 ? "normal" : "", r == 2 ? "duplicate" : "");
+        SCLogDebug("overlap (%s%s)", r == 1 ? "normal" : "", r == 2 ? "duplicate" : "");
 
         if (r == 2) {
-            //SCLogDebug("dup_seg %p", dup_seg);
+            SCLogDebug("dup_seg %p", dup_seg);
         }
 
         /* XXX should we exclude 'retransmissions' here? */

@@ -18,7 +18,7 @@ int SCMapEnumNameToValue(const char *enum_name, SCEnumCharMap *table)
     int result = -1;
 
     if (enum_name == NULL || table == NULL) {
-        //SCLogDebug("Invalid argument(s) passed into SCMapEnumNameToValue");
+        SCLogDebug("Invalid argument(s) passed into SCMapEnumNameToValue");
         return -1;
     }
 
@@ -44,7 +44,7 @@ int SCMapEnumNameToValue(const char *enum_name, SCEnumCharMap *table)
 const char * SCMapEnumValueToName(int enum_value, SCEnumCharMap *table)
 {
     if (table == NULL) {
-        //SCLogDebug("Invalid argument(s) passed into SCMapEnumValueToName");
+        SCLogDebug("Invalid argument(s) passed into SCMapEnumValueToName");
         return NULL;
     }
 
@@ -54,7 +54,7 @@ const char * SCMapEnumValueToName(int enum_value, SCEnumCharMap *table)
         }
     }
 
-    //SCLogDebug("A enum by the value %d doesn't exist in this table", enum_value);
+    SCLogDebug("A enum by the value %d doesn't exist in this table", enum_value);
 
     return NULL;
 }

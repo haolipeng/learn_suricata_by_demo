@@ -24,7 +24,6 @@
 #ifndef __FLOW_SPARE_POOL_H__
 #define __FLOW_SPARE_POOL_H__
 
-#include "suricata-common.h"
 #include "flow.h"
 
 void FlowSparePoolInit(void);

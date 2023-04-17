@@ -160,5 +160,13 @@ void SCLogErr(int x, const char *file, const char *func, const int line,
     exit(EXIT_FAILURE);                                                     \
 } while(0)
 
+/* Avoid the overhead of using the debugging subsystem, in production mode */
+#ifndef DEBUG
+  #define SCLogDebug(...)                 do { } while (0)
+/* Please use it only for debugging purposes */
+#else
+  #define SCLogDebug(...)       SCLog(SC_LOG_DEBUG, __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+#endif
+
 void SCLogInitLogModule(SCLogInitData *);
 #endif //NET_THREAT_DETECT_UTIL_DEBUG_H

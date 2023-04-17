@@ -12,4 +12,4 @@ static packet_context_t *acs_lookup_context(struct cds_hlist_head *list, const c
 void acs_get_stats(packet_context_t *ctx);
 int net_run(const char *in_iface);
 
-#endif //NET_THREAT_DETECT_PACKET_H
+#endif // NET_THREAT_DETECT_PACKET_DEFINE_H

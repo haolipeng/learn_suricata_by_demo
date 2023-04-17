@@ -1,11 +1,12 @@
-#include "threads.h"
+#include "flow-spare-pool.h"
 #include "debug.h"
 #include "flow-private.h"
 #include "flow-queue.h"
 #include "flow-util.h"
-#include "flow-spare-pool.h"
-#include "util-error.h"
+#include "threads.h"
 #include "util-debug.h"
+#include "util-error.h"
+#include <stdlib.h>
 
 typedef struct FlowSparePool {
     FlowQueuePrivate queue;
@@ -28,7 +29,7 @@ uint32_t FlowSpareGetPoolSize(void)
 
 static FlowSparePool *FlowSpareGetPool(void)
 {
-    FlowSparePool *p = SCCalloc(1, sizeof(*p));
+    FlowSparePool *p = calloc(1, sizeof(*p));
     if (p == NULL)
         return NULL;
     return p;
@@ -120,7 +121,7 @@ FlowQueuePrivate FlowSpareGetFromPool(void)
         SCMutexUnlock(&flow_spare_pool_m);
 
         FlowQueuePrivate ret = p->queue;
-        SCFree(p);
+        free(p);
         return ret;
     /* next should always be full if it exists */
     } else if (flow_spare_pool->next != NULL) {
@@ -134,7 +135,7 @@ FlowQueuePrivate FlowSpareGetFromPool(void)
         SCMutexUnlock(&flow_spare_pool_m);
 
         FlowQueuePrivate ret = p->queue;
-        SCFree(p);
+        free(p);
         return ret;
     }
 
@@ -167,7 +168,7 @@ void FlowSparePoolUpdate(uint32_t size)
                 while ((f = FlowQueuePrivateGetFromTop(&p->queue))) {
                     FlowFree(f);
                 }
-                SCFree(p);
+                free(p);
             }
         }
     } else if (todo > 0) {
@@ -183,7 +184,7 @@ void FlowSparePoolUpdate(uint32_t size)
             }
             const bool ok = FlowSparePoolUpdateBlock(p);
             if (p->queue.len == 0) {
-                SCFree(p);
+                free(p);
                 break;
             }
             flow_cnt += p->queue.len;
@@ -248,7 +249,7 @@ void FlowSparePoolDestroy(void)
         }
         flow_spare_pool_flow_cnt -= cnt;
         FlowSparePool *next = p->next;
-        SCFree(p);
+        free(p);
         p = next;
     }
     flow_spare_pool = NULL;

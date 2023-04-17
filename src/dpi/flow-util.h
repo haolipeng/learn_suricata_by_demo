@@ -1,31 +1,5 @@
-/* Copyright (C) 2007-2012 Open Information Security Foundation
- *
- * You can copy, redistribute or modify this Program under the terms of
- * the GNU General Public License version 2 as published by the Free
- * Software Foundation.
- *
- * This program is distributed in the hope that it will be useful,
- * but WITHOUT ANY WARRANTY; without even the implied warranty of
- * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
- * GNU General Public License for more details.
- *
- * You should have received a copy of the GNU General Public License
- * version 2 along with this program; if not, write to the Free Software
- * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA
- * 02110-1301, USA.
- */
-
-/**
- * \file
- *
- * \author Victor Julien <victor@inliniac.net>
- */
-
 #ifndef __FLOW_UTIL_H__
 #define __FLOW_UTIL_H__
-
-#include "detect-engine-state.h"
-#include "tmqh-flow.h"
 
 #define COPY_TIMESTAMP(src,dst) ((dst)->tv_sec = (src)->tv_sec, (dst)->tv_usec = (src)->tv_usec)
 
@@ -75,11 +49,6 @@
         RESET_COUNTERS((f)); \
     } while (0)
 
-/** \brief macro to recycle a flow before it goes into the spare queue for reuse.
- *
- *  Note that the lnext, lprev, hnext fields are untouched, those are
- *  managed by the queueing code. Same goes for fb (FlowBucket ptr) field.
- */
 #define FLOW_RECYCLE(f) do { \
         FlowCleanupAppLayer((f)); \
         (f)->sp = 0; \
@@ -118,12 +87,6 @@
         (f)->sgh_toclient = NULL; \
         GenericVarFree((f)->flowvar); \
         (f)->flowvar = NULL; \
-        if (MacSetFlowStorageEnabled()) { \
-            MacSet *ms = FlowGetStorageById((f), MacSetGetFlowStorageID()); \
-            if (ms != NULL) { \
-                MacSetReset(ms); \
-            } \
-        } \
         RESET_COUNTERS((f)); \
     } while(0)
 
