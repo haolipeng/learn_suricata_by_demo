@@ -131,8 +131,7 @@ int StreamNeedsReassembly(const TcpSession *ssn, uint8_t direction);
 TmEcode StreamTcpThreadInit(ThreadVars *, void *, void **);
 TmEcode StreamTcpThreadDeinit(ThreadVars *tv, void *data);
 
-int StreamTcpPacket (ThreadVars *tv, Packet *p, StreamTcpThread *stt,
-                    PacketQueueNoLock *pq);
+int StreamTcpPacket (ThreadVars *tv, Packet *p, StreamTcpThread *stt,PacketQueueNoLock *pq);
 /* clear ssn and return to pool */
 void StreamTcpSessionClear(void *ssnptr);
 /* cleanup ssn, but don't free ssn */

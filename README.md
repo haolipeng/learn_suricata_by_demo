@@ -22,9 +22,6 @@ agent端资源有限，所以采用run to complete线程模型
 在项目中引入gtest,从代码级别写代码进行测试
 
 六、TODO事项
-DPI_PKT_FLAG_INGRESS未完成
-dpi_meter_session_inc未完成
-DPI_PKT_FLAG_FAKE_EP未完成
 
 VxLan协议的解析没有实现协议识别和解析，以及展示相应字段
 streaming buffer代码是放在dpi目录还是util目录更合适点呢？后面再讨论这个
@@ -36,3 +33,9 @@ streaming buffer代码是放在dpi目录还是util目录更合适点呢？后面
 暂时是复用Packet结构体，后续采用Packet内存池的方式来实现（暂时未实现）
 
 TODO:pcap模式下的流量采集，暂时还没有做
+StatsIncr comment
+StatsAddUI64 comment
+
+StreamTcpSetEvent
+
+ReassembleUpdateAppLayer

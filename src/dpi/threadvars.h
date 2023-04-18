@@ -1,7 +1,3 @@
-//
-// Created by root on 23-4-17.
-//
-
 #ifndef NET_THREAT_DETECT_THREADVARS_H
 #define NET_THREAT_DETECT_THREADVARS_H
 
@@ -9,6 +5,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 
+#include "packet-queue.h"
 #include "util-atomic.h"
 
 typedef struct ThreadVars_ {
@@ -45,7 +42,7 @@ typedef struct ThreadVars_ {
 
   /** queue for decoders to temporarily store extra packets they
      *  generate. */
-  //PacketQueueNoLock decode_pq;
+  PacketQueueNoLock decode_pq;
 
   /** Stream packet queue for flow time out injection. Either a pointer to the
      *  workers input queue or to stream_pq_local */

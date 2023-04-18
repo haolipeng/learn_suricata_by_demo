@@ -25,6 +25,6 @@ void PacketEnqueueNoLock(PacketQueueNoLock *qnl, struct Packet_ *p);
 //void PacketEnqueue (PacketQueue *, struct Packet_ *);
 
 struct Packet_ *PacketDequeueNoLock (PacketQueueNoLock *qnl);
-//struct Packet_ *PacketDequeue (PacketQueue *);
+struct Packet_ *PacketDequeue (PacketQueue *);
 
 #endif //NET_THREAT_DETECT_PACKET_QUEUE_H

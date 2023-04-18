@@ -1,7 +1,3 @@
-//
-// Created by root on 3/30/23.
-//
-
 #include "stream-tcp-private.h"
 #include "decode.h"
 

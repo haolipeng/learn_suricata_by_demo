@@ -1,7 +1,3 @@
-//
-// Created by root on 3/28/23.
-//
-
 #ifndef NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H
 #define NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H
 
@@ -59,13 +55,12 @@ typedef struct TcpReassemblyThreadCtx_ {
 } TcpReassemblyThreadCtx;
 
 void StreamTcpReassembleInitMemuse(void);
-int StreamTcpReassembleHandleSegment(TcpSession *, TcpStream *, Packet *, PacketQueueNoLock *);
+int StreamTcpReassembleHandleSegment(ThreadVars *, TcpReassemblyThreadCtx *,TcpSession *, TcpStream *, Packet *, PacketQueueNoLock *);
 int StreamTcpReassembleInit(char);
 void StreamTcpReassembleFree(char);
 TcpReassemblyThreadCtx *StreamTcpReassembleInitThreadCtx(ThreadVars *tv);
 void StreamTcpReassembleFreeThreadCtx(TcpReassemblyThreadCtx *);
-int StreamTcpReassembleAppLayer (ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,
-                                TcpSession *ssn, TcpStream *stream,
+int StreamTcpReassembleAppLayer (ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,TcpSession *ssn, TcpStream *stream,
                                 Packet *p, enum StreamUpdateDir dir);
 
 void StreamTcpCreateTestPacket(uint8_t *, uint8_t, uint8_t, uint8_t);
@@ -77,7 +72,7 @@ void StreamTcpSetDisableRawReassemblyFlag(TcpSession *, char);
 void StreamTcpSetOSPolicy(TcpStream *, Packet *);
 
 int StreamTcpReassembleHandleSegmentHandleData(ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,TcpSession *ssn, TcpStream *stream, Packet *p);
-int StreamTcpReassembleInsertSegment(TcpStream *, TcpSegment *, Packet *, uint32_t pkt_seq, uint8_t *pkt_data, uint16_t pkt_datalen);
+int StreamTcpReassembleInsertSegment(ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,TcpStream *, TcpSegment *, Packet *, uint32_t pkt_seq, uint8_t *pkt_data, uint16_t pkt_datalen);
 TcpSegment *StreamTcpGetSegment(ThreadVars *, TcpReassemblyThreadCtx *);
 
 void StreamTcpReturnStreamSegments(TcpStream *);
@@ -100,4 +95,15 @@ int StreamTcpAppLayerIsDisabled(Flow *f);
 
 bool StreamReassembleRawHasDataReady(TcpSession *ssn, Packet *p);
 void StreamTcpReassemblySetMinInspectDepth(TcpSession *ssn, int direction, uint32_t depth);
+
+static inline bool STREAM_LASTACK_GT_BASESEQ(const TcpStream *stream)
+{
+  /* last ack not yet initialized */
+  if (STREAM_BASE_OFFSET(stream) == 0 && (stream->tcp_flags & TH_ACK) == 0) {
+    return false;
+  }
+  if (SEQ_GT(stream->last_ack, stream->base_seq))
+    return true;
+  return false;
+}
 #endif //NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H

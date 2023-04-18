@@ -405,17 +405,18 @@ TcpReassemblyThreadCtx *StreamTcpReassembleInitThreadCtx(ThreadVars *tv)
   if (ra_ctx->segment_thread_pool_id < 0 || segment_thread_pool == NULL) {
     SCLogError(SC_ERR_MEM_ALLOC, "failed to setup/expand stream segment pool. Expand stream.reassembly.memcap?");
     StreamTcpReassembleFreeThreadCtx(ra_ctx);
-    SCReturnPtr(NULL, "TcpReassemblyThreadCtx");
+    return NULL;
   }
 
-  SCReturnPtr(ra_ctx, "TcpReassemblyThreadCtx");
+  return ra_ctx;
 }
 
 void StreamTcpReassembleFreeThreadCtx(TcpReassemblyThreadCtx *ra_ctx)
 {
   if (ra_ctx) {
-    AppLayerDestroyCtxThread(ra_ctx->app_tctx);
-    SCFree(ra_ctx);
+    //TODO:modify App Layer
+    //AppLayerDestroyCtxThread(ra_ctx->app_tctx);
+    free(ra_ctx);
   }
   return ;
 }
@@ -462,12 +463,12 @@ static uint32_t StreamTcpReassembleCheckDepth(TcpSession *ssn, TcpStream *stream
   /* if the configured depth value is 0, it means there is no limit on
      reassembly depth. Otherwise carry on my boy ;) */
   if (ssn->reassembly_depth == 0) {
-    SCReturnUInt(size);
+    return size;
   }
 
   /* if the final flag is set, we're not accepting anymore */
   if (stream->flags & STREAMTCP_STREAM_FLAG_DEPTH_REACHED) {
-    SCReturnUInt(0);
+    return 0;
   }
 
   uint64_t seg_depth;
@@ -475,7 +476,7 @@ static uint32_t StreamTcpReassembleCheckDepth(TcpSession *ssn, TcpStream *stream
     if (SEQ_LEQ(seq+size, stream->base_seq)) {
       SCLogDebug("segment entirely before base_seq, weird: base %u, seq %u, re %u",
                  stream->base_seq, seq, seq+size);
-      SCReturnUInt(0);
+      return 0;
     }
 
     seg_depth = STREAM_BASE_OFFSET(stream) + size - (stream->base_seq - seq);
@@ -494,7 +495,7 @@ static uint32_t StreamTcpReassembleCheckDepth(TcpSession *ssn, TcpStream *stream
   if (seg_depth > (uint64_t)ssn->reassembly_depth) {
     SCLogDebug("STREAMTCP_STREAM_FLAG_DEPTH_REACHED");
     stream->flags |= STREAMTCP_STREAM_FLAG_DEPTH_REACHED;
-    SCReturnUInt(0);
+    return 0;
   }
   SCLogDebug("NOT STREAMTCP_STREAM_FLAG_DEPTH_REACHED");
   SCLogDebug("%"PRIu64" <= %u", seg_depth, ssn->reassembly_depth);
@@ -508,7 +509,7 @@ static uint32_t StreamTcpReassembleCheckDepth(TcpSession *ssn, TcpStream *stream
 
     if (SEQ_LEQ((seq + size),(stream->isn + 1 + ssn->reassembly_depth))) {
       /* complete fit */
-      SCReturnUInt(size);
+      return size;
     } else {
       stream->flags |= STREAMTCP_STREAM_FLAG_DEPTH_REACHED;
       /* partial fit, return only what fits */
@@ -516,11 +517,11 @@ static uint32_t StreamTcpReassembleCheckDepth(TcpSession *ssn, TcpStream *stream
       DEBUG_VALIDATE_BUG_ON(part > size);
       if (part > size)
         part = size;
-      SCReturnUInt(part);
+      return (part);
     }
   }
 
-  SCReturnUInt(0);
+  return (0);
 }
 
 uint32_t StreamDataAvailableForProtoDetect(TcpStream *stream)
@@ -563,15 +564,12 @@ int StreamTcpReassembleHandleSegmentHandleData(ThreadVars *tv, TcpReassemblyThre
     StreamTcpSetOSPolicy(stream, p);
   }
 
-  //标识session的STREAMTCP_FLAG_APP_LAYER_DISABLED和stram的STREAMTCP_STREAM_FLAG_NEW_RAW_DISABLED，
-  // app and raw reassembly disable则无需重组
   if ((ssn->flags & STREAMTCP_FLAG_APP_LAYER_DISABLED) &&
       (stream->flags & STREAMTCP_STREAM_FLAG_NEW_RAW_DISABLED)) {
     SCLogDebug("ssn %p: both app and raw reassembly disabled, not reassembling", ssn);
-    SCReturnInt(0);
+    return (0);
   }
 
-  //检测重组深度
   /* If we have reached the defined depth for either of the stream, then stop
      reassembling the TCP session */
   uint32_t size = StreamTcpReassembleCheckDepth(ssn, stream, TCP_GET_SEQ(p), p->payload_len);
@@ -579,26 +577,24 @@ int StreamTcpReassembleHandleSegmentHandleData(ThreadVars *tv, TcpReassemblyThre
 
   if (stream->flags & STREAMTCP_STREAM_FLAG_DEPTH_REACHED) {
     /* increment stream depth counter */
-    StatsIncr(tv, ra_ctx->counter_tcp_stream_depth);
+    //StatsIncr(tv, ra_ctx->counter_tcp_stream_depth);
   }
   if (size == 0) {
     SCLogDebug("ssn %p: depth reached, not reassembling", ssn);
-    SCReturnInt(0);
+    return (0);
   }
 
   DEBUG_VALIDATE_BUG_ON(size > p->payload_len);
   if (size > p->payload_len)
     size = p->payload_len;
 
-  //获取一个TcpSegment,
   TcpSegment *seg = StreamTcpGetSegment(tv, ra_ctx);
   if (seg == NULL) {
     SCLogDebug("segment_pool is empty");
-    StreamTcpSetEvent(p, STREAM_REASSEMBLY_NO_SEGMENT);
-    SCReturnInt(-1);
+    //StreamTcpSetEvent(p, STREAM_REASSEMBLY_NO_SEGMENT);
+    return (-1);
   }
 
-  //设置TcpSegment的seq序列号和payload_len
   TCP_SEG_LEN(seg) = size;
   seg->seq = TCP_GET_SEQ(p);
 
@@ -607,20 +603,17 @@ int StreamTcpReassembleHandleSegmentHandleData(ThreadVars *tv, TcpReassemblyThre
     seg->seq += 1;
 
   /* proto detection skipped, but now we do get data. Set event. */
-  // 略过协议识别，设置事件
   if (RB_EMPTY(&stream->seg_tree) &&
       stream->flags & STREAMTCP_STREAM_FLAG_APPPROTO_DETECTION_SKIPPED) {
-
-    AppLayerDecoderEventsSetEventRaw(&p->app_layer_events,
-                                     APPLAYER_PROTO_DETECTION_SKIPPED);
+    //TODO:App Layer modify by haolipeng
+    //AppLayerDecoderEventsSetEventRaw(&p->app_layer_events,APPLAYER_PROTO_DETECTION_SKIPPED);
   }
 
-  //tcp重组插入segment
   if (StreamTcpReassembleInsertSegment(tv, ra_ctx, stream, seg, p, TCP_GET_SEQ(p), p->payload, p->payload_len) != 0) {
     SCLogDebug("StreamTcpReassembleInsertSegment failed");
-    SCReturnInt(-1);
+    return (-1);
   }
-  SCReturnInt(0);
+  return (0);
 }
 
 static uint8_t StreamGetAppLayerFlags(TcpSession *ssn, TcpStream *stream,
@@ -682,16 +675,16 @@ static int StreamTcpReassembleRawCheckLimit(const TcpSession *ssn,
       SCLogDebug("reassembling now as STREAMTCP_STREAM_FLAG_NEW_RAW_DISABLED is set, "
                  "so no new segments will be considered");
     }
-    SCReturnInt(1);
+    return (1);
   }
 #undef STREAMTCP_STREAM_FLAG_FLUSH_FLAGS
 
   /* some states mean we reassemble no matter how much data we have */
   if (ssn->state > TCP_TIME_WAIT)
-    SCReturnInt(1);
+    return (1);
 
   if (p->flags & PKT_PSEUDO_STREAM_END)
-    SCReturnInt(1);
+    return (1);
 
   /* check if we have enough data to do raw reassembly */
   if (PKT_IS_TOSERVER(p)) {
@@ -702,14 +695,14 @@ static int StreamTcpReassembleRawCheckLimit(const TcpSession *ssn,
 
       int64_t diff = max_offset - STREAM_RAW_PROGRESS(stream);
       if ((int64_t)stream_config.reassembly_toserver_chunk_size <= diff) {
-        SCReturnInt(1);
+        return (1);
       } else {
         SCLogDebug("toserver min chunk len not yet reached: "
                    "last_ack %"PRIu32", ra_raw_base_seq %"PRIu32", %"PRIu32" < "
                    "%"PRIu32"", stream->last_ack, stream->base_seq,
                    (stream->last_ack - stream->base_seq),
                    stream_config.reassembly_toserver_chunk_size);
-        SCReturnInt(0);
+        return (0);
       }
     }
   } else {
@@ -721,19 +714,19 @@ static int StreamTcpReassembleRawCheckLimit(const TcpSession *ssn,
       int64_t diff = max_offset - STREAM_RAW_PROGRESS(stream);
 
       if ((int64_t)stream_config.reassembly_toclient_chunk_size <= diff) {
-        SCReturnInt(1);
+        return (1);
       } else {
         SCLogDebug("toclient min chunk len not yet reached: "
                    "last_ack %"PRIu32", base_seq %"PRIu32",  %"PRIu32" < "
                    "%"PRIu32"", stream->last_ack, stream->base_seq,
                    (stream->last_ack - stream->base_seq),
                    stream_config.reassembly_toclient_chunk_size);
-        SCReturnInt(0);
+        return (0);
       }
     }
   }
 
-  SCReturnInt(0);
+  return (0);
 }
 
 /**
@@ -1028,6 +1021,8 @@ static inline uint32_t AdjustToAcked(const Packet *p,
  *  \param stream pointer to pointer as app-layer can switch flow dir
  *  \retval 0 success
  */
+ //TODO:modify by haolipeng
+#if 0
 static int ReassembleUpdateAppLayer (ThreadVars *tv,
                                     TcpReassemblyThreadCtx *ra_ctx,
                                     TcpSession *ssn, TcpStream **stream,
@@ -1095,7 +1090,7 @@ static int ReassembleUpdateAppLayer (ThreadVars *tv,
     } else if (mydata == NULL || (mydata_len == 0 && ((flags & STREAM_EOF) == 0))) {
       /* Possibly a gap, but no new data. */
       if ((p->flags & PKT_PSEUDO_STREAM_END) == 0 || ssn->state < TCP_CLOSED)
-        SCReturnInt(0);
+        return (0);
 
       mydata = NULL;
       mydata_len = 0;
@@ -1117,7 +1112,7 @@ static int ReassembleUpdateAppLayer (ThreadVars *tv,
           // TODO send incomplete data to app-layer with special flag
           // indicating its all there is for this rec?
         } else {
-          SCReturnInt(0);
+          return (0);
         }
         app_progress = STREAM_APP_PROGRESS(*stream);
         continue;
@@ -1137,8 +1132,9 @@ static int ReassembleUpdateAppLayer (ThreadVars *tv,
       break;
   }
 
-  SCReturnInt(0);
+  return (0);
 }
+#endif
 
 /**
  *  \brief Update the stream reassembly upon receiving a packet.
@@ -1152,6 +1148,15 @@ static int ReassembleUpdateAppLayer (ThreadVars *tv,
  *  any issues, since processing of each stream is independent of the
  *  other stream.
  */
+#if 1
+int StreamTcpReassembleAppLayer (ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,
+                                TcpSession *ssn, TcpStream *stream,
+                                Packet *p, enum StreamUpdateDir dir)
+{
+  //TODO:modify by haolipeng
+  return 0;
+}
+#else
 int StreamTcpReassembleAppLayer (ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,
                                 TcpSession *ssn, TcpStream *stream,
                                 Packet *p, enum StreamUpdateDir dir)
@@ -1161,7 +1166,7 @@ int StreamTcpReassembleAppLayer (ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,
   if ((ssn->flags & STREAMTCP_FLAG_APP_LAYER_DISABLED) ||
       (stream->flags & STREAMTCP_STREAM_FLAG_NOREASSEMBLY)) {
     SCLogDebug("stream no reassembly flag set or app-layer disabled.");
-    SCReturnInt(0);
+    return (0);
   }
 
 #ifdef DEBUG
@@ -1182,13 +1187,14 @@ int StreamTcpReassembleAppLayer (ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,
                             StreamGetAppLayerFlags(ssn, stream, p));
       AppLayerProfilingStore(ra_ctx->app_tctx, p);
 
-      SCReturnInt(0);
+      return (0);
     }
   }
 
   /* with all that out of the way, lets update the app-layer */
   return ReassembleUpdateAppLayer(tv, ra_ctx, ssn, &stream, p, dir);
 }
+#endif
 
 /** \internal
  *  \brief get stream data from offset
@@ -1742,12 +1748,13 @@ static int StreamTcpReassembleHandleSegmentUpdateACK (ThreadVars *tv,
                                                      TcpReassemblyThreadCtx *ra_ctx, TcpSession *ssn, TcpStream *stream, Packet *p)
 {
   if (StreamTcpReassembleAppLayer(tv, ra_ctx, ssn, stream, p, UPDATE_DIR_OPPOSING) < 0)
-    SCReturnInt(-1);
+    return (-1);
 
-  SCReturnInt(0);
+  return (0);
 }
 
-int StreamTcpReassembleHandleSegment(TcpSession *ssn, TcpStream *stream,
+int StreamTcpReassembleHandleSegment(ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,
+                                     TcpSession *ssn, TcpStream *stream,
                                      Packet *p, PacketQueueNoLock *pq)
 {
   DEBUG_VALIDATE_BUG_ON(p->tcph == NULL);
@@ -1787,7 +1794,7 @@ int StreamTcpReassembleHandleSegment(TcpSession *ssn, TcpStream *stream,
 
     if (StreamTcpReassembleHandleSegmentUpdateACK(tv, ra_ctx, ssn, opposing_stream, p) != 0) {
       SCLogDebug("StreamTcpReassembleHandleSegmentUpdateACK error");
-      SCReturnInt(-1);
+      return (-1);
     }
 
     /* StreamTcpReassembleHandleSegmentUpdateACK
@@ -1806,9 +1813,9 @@ int StreamTcpReassembleHandleSegment(TcpSession *ssn, TcpStream *stream,
     if (StreamTcpReassembleHandleSegmentHandleData(tv, ra_ctx, ssn, stream, p) != 0) {
       SCLogDebug("StreamTcpReassembleHandleSegmentHandleData error");
       /* failure can only be because of memcap hit, so see if this should lead to a drop */
-      ExceptionPolicyApply(
-          p, stream_config.reassembly_memcap_policy, PKT_DROP_REASON_STREAM_MEMCAP);
-      SCReturnInt(-1);
+      //TODO:modify by haolipeng
+      //ExceptionPolicyApply(p, stream_config.reassembly_memcap_policy, PKT_DROP_REASON_STREAM_MEMCAP);
+      return (-1);
     }
 
     SCLogDebug("packet %"PRIu64" set PKT_STREAM_ADD", p->pcap_cnt);
@@ -1844,11 +1851,11 @@ int StreamTcpReassembleHandleSegment(TcpSession *ssn, TcpStream *stream,
                "false",
                (p->flags & PKT_PSEUDO_STREAM_END) ?"true":"false");
     if (StreamTcpReassembleAppLayer(tv, ra_ctx, ssn, stream, p, dir) < 0) {
-      SCReturnInt(-1);
+      return (-1);
     }
   }
 
-  SCReturnInt(0);
+  return (0);
 }
 
 /**
@@ -1863,7 +1870,7 @@ TcpSegment *StreamTcpGetSegment(ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx)
   if (seg == NULL) {
     /* Increment the counter to show that we are not able to serve the
        segment request due to memcap limit */
-    StatsIncr(tv, ra_ctx->counter_tcp_segment_memcap);
+    //StatsIncr(tv, ra_ctx->counter_tcp_segment_memcap);
   } else {
     memset(&seg->sbseg, 0, sizeof(seg->sbseg));
   }

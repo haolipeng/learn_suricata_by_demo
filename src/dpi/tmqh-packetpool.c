@@ -313,92 +313,6 @@ Packet *TmqhInputPacketpool(ThreadVars *tv)
 
 void TmqhOutputPacketpool(ThreadVars *t, Packet *p)
 {
-    bool proot = false;
-
-    SCLogDebug("Packet %p, p->root %p, alloced %s", p, p->root, p->flags & PKT_ALLOC ? "true" : "false");
-
-    if (IS_TUNNEL_PKT(p)) {
-        SCLogDebug("Packet %p is a tunnel packet: %s",
-            p,p->root ? "upper layer" : "tunnel root");
-
-        /* get a lock to access root packet fields */
-        SCMutex *m = p->root ? &p->root->tunnel_mutex : &p->tunnel_mutex;
-        SCMutexLock(m);
-
-        if (IS_TUNNEL_ROOT_PKT(p)) {
-            SCLogDebug("IS_TUNNEL_ROOT_PKT == TRUE");
-            const uint16_t outstanding = TUNNEL_PKT_TPR(p) - TUNNEL_PKT_RTV(p);
-            SCLogDebug("root pkt: outstanding %u", outstanding);
-            if (outstanding == 0) {
-                SCLogDebug("no tunnel packets outstanding, no more tunnel "
-                        "packet(s) depending on this root");
-                /* if this packet is the root and there are no
-                 * more tunnel packets to consider
-                 *
-                 * return it to the pool */
-            } else {
-                SCLogDebug("tunnel root Packet %p: outstanding > 0, so "
-                        "packets are still depending on this root, setting "
-                        "SET_TUNNEL_PKT_VERDICTED", p);
-                /* if this is the root and there are more tunnel
-                 * packets, return this to the pool. It's still referenced
-                 * by the tunnel packets, and we will return it
-                 * when we handle them */
-                SET_TUNNEL_PKT_VERDICTED(p);
-
-                PACKET_PROFILING_END(p);
-                SCMutexUnlock(m);
-                return ;
-            }
-        } else {
-            SCLogDebug("NOT IS_TUNNEL_ROOT_PKT, so tunnel pkt");
-
-            TUNNEL_INCR_PKT_RTV_NOLOCK(p);
-            const uint16_t outstanding = TUNNEL_PKT_TPR(p) - TUNNEL_PKT_RTV(p);
-            SCLogDebug("tunnel pkt: outstanding %u", outstanding);
-            /* all tunnel packets are processed except us. Root already
-             * processed. So return tunnel pkt and root packet to the
-             * pool. */
-            if (outstanding == 0 &&
-                    p->root && IS_TUNNEL_PKT_VERDICTED(p->root))
-            {
-                SCLogDebug("root verdicted == true && no outstanding");
-
-                /* handle freeing the root as well*/
-                SCLogDebug("setting proot = 1 for root pkt, p->root %p "
-                        "(tunnel packet %p)", p->root, p);
-                proot = true;
-
-                /* fall through */
-
-            } else {
-                /* root not ready yet, or not the last tunnel packet,
-                 * so get rid of the tunnel pkt only */
-
-                SCLogDebug("NOT IS_TUNNEL_PKT_VERDICTED (%s) || "
-                        "outstanding > 0 (%u)",
-                        (p->root && IS_TUNNEL_PKT_VERDICTED(p->root)) ? "true" : "false",
-                        outstanding);
-
-                /* fall through */
-            }
-        }
-        SCMutexUnlock(m);
-
-        SCLogDebug("tunnel stuff done, move on (proot %d)", proot);
-    }
-
-    /* we're done with the tunnel root now as well */
-    if (proot == true) {
-        SCLogDebug("getting rid of root pkt... alloc'd %s", p->root->flags & PKT_ALLOC ? "true" : "false");
-
-        PACKET_RELEASE_REFS(p->root);
-        p->root->ReleasePacket(p->root);
-        p->root = NULL;
-    }
-
-    PACKET_PROFILING_END(p);
-
     PACKET_RELEASE_REFS(p);
     p->ReleasePacket(p);
 
@@ -455,7 +369,9 @@ void PacketPoolPostRunmodes(void)
         FatalError(SC_ERR_INVALID_ARGUMENT, "'max-pending-packets' setting "
                 "must be at least %d", RESERVED_PACKETS);
     }
-    uint32_t threads = TmThreadCountThreadsByTmmFlags(TM_FLAG_DETECT_TM);
+    //TODO:modify by haolipeng ,set default 1
+    //uint32_t threads = TmThreadCountThreadsByTmmFlags(TM_FLAG_DETECT_TM);
+    uint32_t threads =1;
     if (threads == 0)
         return;
 

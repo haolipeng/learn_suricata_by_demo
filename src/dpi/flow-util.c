@@ -23,7 +23,6 @@
  * Flow utility functions
  */
 
-#include "suricata-common.h"
 #include "threads.h"
 
 #include "flow.h"
@@ -34,17 +33,12 @@
 #include "util-var.h"
 #include "util-debug.h"
 
-/** \brief allocate a flow
- *
- *  We check against the memuse counter. If it passes that check we increment
- *  the counter first, then we try to alloc.
- *
- *  \retval f the flow or NULL on out of memory
- */
 Flow *FlowAlloc(void)
 {
     Flow *f;
-    size_t size = sizeof(Flow) + FlowStorageSize();
+    //TODO:modify by haolipeng
+    //size_t size = sizeof(Flow) + FlowStorageSize();
+    size_t size = sizeof(Flow);
 
     if (!(FLOW_CHECK_MEMCAP(size))) {
         return NULL;
@@ -52,7 +46,7 @@ Flow *FlowAlloc(void)
 
     (void) SC_ATOMIC_ADD(flow_memuse, size);
 
-    f = SCMalloc(size);
+    f = malloc(size);
     if (unlikely(f == NULL)) {
         (void)SC_ATOMIC_SUB(flow_memuse, size);
         return NULL;
@@ -75,7 +69,9 @@ void FlowFree(Flow *f)
     FLOW_DESTROY(f);
     free(f);
 
-    size_t size = sizeof(Flow) + FlowStorageSize();
+    //TODO:modify by haolipeng
+    //size_t size = sizeof(Flow) + FlowStorageSize();
+    size_t size = sizeof(Flow);
     (void) SC_ATOMIC_SUB(flow_memuse, size);
 }
 
@@ -113,24 +109,6 @@ uint8_t FlowGetReverseProtoMapping(uint8_t rproto)
     }
 }
 
-static inline void FlowSetICMPv4CounterPart(Flow *f)
-{
-    int ctype = ICMPv4GetCounterpart(f->icmp_s.type);
-    if (ctype == -1)
-        return;
-
-    f->icmp_d.type = (uint8_t)ctype;
-}
-
-static inline void FlowSetICMPv6CounterPart(Flow *f)
-{
-    int ctype = ICMPv6GetCounterpart(f->icmp_s.type);
-    if (ctype == -1)
-        return;
-
-    f->icmp_d.type = (uint8_t)ctype;
-}
-
 /* initialize the flow from the first packet
  * we see from it. */
 void FlowInit(Flow *f, const Packet *p)
@@ -138,7 +116,7 @@ void FlowInit(Flow *f, const Packet *p)
     SCLogDebug("flow %p", f);
 
     f->proto = p->proto;
-    f->recursion_level = p->recursion_level;
+    //f->recursion_level = p->recursion_level;
     f->vlan_id[0] = p->vlan_id[0];
     f->vlan_id[1] = p->vlan_id[1];
     f->vlan_idx = p->vlan_idx;
@@ -165,18 +143,7 @@ void FlowInit(Flow *f, const Packet *p)
     } else if (p->udph != NULL) { /* XXX MACRO */
         SET_UDP_SRC_PORT(p,&f->sp);
         SET_UDP_DST_PORT(p,&f->dp);
-    } else if (p->icmpv4h != NULL) {
-        f->icmp_s.type = p->icmp_s.type;
-        f->icmp_s.code = p->icmp_s.code;
-        FlowSetICMPv4CounterPart(f);
-    } else if (p->icmpv6h != NULL) {
-        f->icmp_s.type = p->icmp_s.type;
-        f->icmp_s.code = p->icmp_s.code;
-        FlowSetICMPv6CounterPart(f);
-    } else if (p->sctph != NULL) { /* XXX MACRO */
-        SET_SCTP_SRC_PORT(p,&f->sp);
-        SET_SCTP_DST_PORT(p,&f->dp);
-    } else {
+    }else {
         /* nothing to do for this IP proto. */
         SCLogDebug("no special setup for IP proto %u", p->proto);
     }
@@ -190,28 +157,3 @@ void FlowInit(Flow *f, const Packet *p)
     return;
 }
 
-FlowStorageId g_bypass_info_id = { .id = -1 };
-
-FlowStorageId GetFlowBypassInfoID(void)
-{
-    return g_bypass_info_id;
-}
-
-static void FlowBypassFree(void *x)
-{
-    FlowBypassInfo *fb = (FlowBypassInfo *) x;
-
-    if (fb == NULL)
-        return;
-
-    if (fb->bypass_data && fb->BypassFree) {
-        fb->BypassFree(fb->bypass_data);
-    }
-    SCFree(fb);
-}
-
-void RegisterFlowBypassInfo(void)
-{
-    g_bypass_info_id = FlowStorageRegister("bypass_counters", sizeof(void *),
-                                              NULL, FlowBypassFree);
-}

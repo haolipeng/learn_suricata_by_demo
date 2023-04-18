@@ -37,12 +37,15 @@
  *
  * Pool utility functions
  */
+#include <stddef.h>
+#include <string.h>
+#include <stdlib.h>
+#include <stdio.h>
 
-#include "suricata-common.h"
-#include "util-pool.h"
-#include "util-pool-thread.h"
-#include "util-unittest.h"
+#include "base.h"
 #include "util-debug.h"
+#include "util-pool-thread.h"
+#include "util-pool.h"
 
 static int PoolMemset(void *pitem, void *initdata)
 {
@@ -101,7 +104,7 @@ Pool *PoolInit(uint32_t size, uint32_t prealloc_size, uint32_t elt_size,
     }
 
     /* setup the filter */
-    p = SCMalloc(sizeof(Pool));
+    p = malloc(sizeof(Pool));
     if (unlikely(p == NULL)) {
         SCLogError(SC_ERR_POOL_INIT, "alloc error");
         goto error;
@@ -126,7 +129,7 @@ Pool *PoolInit(uint32_t size, uint32_t prealloc_size, uint32_t elt_size,
     /* alloc the buckets and place them in the empty list */
     uint32_t u32 = 0;
     if (size > 0) {
-        PoolBucket *pb = SCCalloc(size, sizeof(PoolBucket));
+        PoolBucket *pb = calloc(size, sizeof(PoolBucket));
         if (unlikely(pb == NULL)) {
             SCLogError(SC_ERR_POOL_INIT, "alloc error");
             goto error;
@@ -142,7 +145,7 @@ Pool *PoolInit(uint32_t size, uint32_t prealloc_size, uint32_t elt_size,
             pb++;
         }
 
-        p->data_buffer = SCCalloc(prealloc_size, elt_size);
+        p->data_buffer = calloc(prealloc_size, elt_size);
         /* FIXME better goto */
         if (p->data_buffer == NULL) {
             SCLogError(SC_ERR_POOL_INIT, "alloc error");
@@ -152,7 +155,7 @@ Pool *PoolInit(uint32_t size, uint32_t prealloc_size, uint32_t elt_size,
     /* prealloc the buckets and requeue them to the alloc list */
     for (u32 = 0; u32 < prealloc_size; u32++) {
         if (size == 0) { /* unlimited */
-            PoolBucket *pb = SCMalloc(sizeof(PoolBucket));
+            PoolBucket *pb = malloc(sizeof(PoolBucket));
             if (unlikely(pb == NULL)) {
                 SCLogError(SC_ERR_POOL_INIT, "alloc error");
                 goto error;
@@ -162,11 +165,11 @@ Pool *PoolInit(uint32_t size, uint32_t prealloc_size, uint32_t elt_size,
             if (p->Alloc) {
                 pb->data = p->Alloc();
             } else {
-                pb->data = SCMalloc(p->elt_size);
+                pb->data = malloc(p->elt_size);
             }
             if (pb->data == NULL) {
                 SCLogError(SC_ERR_POOL_INIT, "alloc error");
-                SCFree(pb);
+                free(pb);
                 goto error;
             }
             if (p->Init(pb->data, p->InitData) != 1) {
@@ -174,8 +177,8 @@ Pool *PoolInit(uint32_t size, uint32_t prealloc_size, uint32_t elt_size,
                 if (p->Free)
                     p->Free(pb->data);
                 else
-                    SCFree(pb->data);
-                SCFree(pb);
+                    free(pb->data);
+                free(pb);
                 goto error;
             }
             p->allocated++;
@@ -231,11 +234,11 @@ void PoolFree(Pool *p)
             if (p->Free)
                 p->Free(pb->data);
             else
-                SCFree(pb->data);
+                free(pb->data);
         }
         pb->data = NULL;
         if (!(pb->flags & POOL_BUCKET_PREALLOCATED)) {
-            SCFree(pb);
+            free(pb);
         }
     }
 
@@ -249,20 +252,20 @@ void PoolFree(Pool *p)
                 if (p->Free)
                     p->Free(pb->data);
                 else
-                    SCFree(pb->data);
+                    free(pb->data);
             }
             pb->data = NULL;
         }
         if (!(pb->flags & POOL_BUCKET_PREALLOCATED)) {
-            SCFree(pb);
+            free(pb);
         }
     }
 
     if (p->pb_buffer)
-        SCFree(p->pb_buffer);
+      free(p->pb_buffer);
     if (p->data_buffer)
-        SCFree(p->data_buffer);
-    SCFree(p);
+      free(p->data_buffer);
+    free(p);
 }
 
 void PoolPrint(Pool *p)
@@ -292,7 +295,7 @@ void *PoolGet(Pool *p)
             if (p->Alloc != NULL) {
                 pitem = p->Alloc();
             } else {
-                pitem = SCMalloc(p->elt_size);
+                pitem = malloc(p->elt_size);
             }
 
             if (pitem != NULL) {
@@ -300,8 +303,8 @@ void *PoolGet(Pool *p)
                     if (p->Free != NULL)
                         p->Free(pitem);
                     else
-                        SCFree(pitem);
-                    SCReturnPtr(NULL, "void");
+                        free(pitem);
+                    return NULL;
                 }
 
                 p->allocated++;
@@ -312,9 +315,9 @@ void *PoolGet(Pool *p)
 #endif
             }
 
-            SCReturnPtr(pitem, "void");
+            return pitem;
         } else {
-            SCReturnPtr(NULL, "void");
+            return NULL;
         }
     }
 
@@ -325,7 +328,7 @@ void *PoolGet(Pool *p)
     if (p->outstanding > p->max_outstanding)
         p->max_outstanding = p->outstanding;
 #endif
-    SCReturnPtr(ptr,"void");
+    return ptr;
 }
 
 void PoolReturn(Pool *p, void *data)
@@ -344,7 +347,7 @@ void PoolReturn(Pool *p, void *data)
             if (p->Free)
                 p->Free(data);
             else
-                SCFree(data);
+                free(data);
         }
 
         SCLogDebug("tried to return data %p to the pool %p, but no more "

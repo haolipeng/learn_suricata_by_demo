@@ -1,7 +1,3 @@
-//
-// Created by root on 3/28/23.
-//
-
 #ifndef NET_THREAT_DETECT_FLOW_H
 #define NET_THREAT_DETECT_FLOW_H
 
@@ -528,8 +524,11 @@ static inline bool FlowIsBypassed(const Flow *f)
 }
 
 //函数声明区
+void FlowHandlePacket (ThreadVars *, FlowLookupStruct *, Packet *);
 int FlowClearMemory(Flow *,uint8_t );
-void FlowHandlePacketUpdate(Flow *f, Packet *p, DecodeThreadVars *dtv);
+void FlowHandlePacketUpdate(Flow *f, Packet *p, ThreadVars *tv, DecodeThreadVars *dtv);
 void FlowCleanupAppLayer(Flow *);
 int FlowChangeProto(Flow *);
+
+void FlowUpdateState(Flow *f, enum FlowState s);
 #endif //NET_THREAT_DETECT_FLOW_H

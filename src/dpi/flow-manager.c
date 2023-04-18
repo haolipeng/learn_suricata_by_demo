@@ -22,13 +22,9 @@
  * \author Victor Julien <victor@inliniac.net>
  */
 
-#include "suricata-common.h"
-#include "suricata.h"
 #include "decode.h"
 #include "conf.h"
 #include "threadvars.h"
-#include "tm-threads.h"
-#include "runmodes.h"
 
 #include "util-random.h"
 #include "util-time.h"
@@ -41,34 +37,21 @@
 #include "flow-private.h"
 #include "flow-timeout.h"
 #include "flow-manager.h"
-#include "flow-storage.h"
 #include "flow-spare-pool.h"
 
 #include "stream-tcp-private.h"
 #include "stream-tcp-reassemble.h"
 #include "stream-tcp.h"
 
-#include "util-unittest.h"
-#include "util-unittest-helper.h"
 #include "util-byte.h"
 
 #include "util-debug.h"
-#include "util-privs.h"
-#include "util-signal.h"
 
 #include "threads.h"
 #include "detect.h"
-#include "detect-engine-state.h"
 #include "stream.h"
 
 #include "app-layer-parser.h"
-
-#include "host-timeout.h"
-#include "defrag-timeout.h"
-#include "ippair-timeout.h"
-
-#include "output-flow.h"
-#include "util-validate.h"
 
 /* Run mode selected at suricata.c */
 extern int run_mode;
@@ -243,6 +226,7 @@ static uint32_t ProcessAsideQueue(FlowManagerTimeoutThread *td, FlowTimeoutCount
                 !FlowIsBypassed(f) && FlowForceReassemblyNeedReassembly(f) == 1) {
             /* Send the flow to its thread */
             FlowForceReassemblyForFlow(f);
+
             FLOWLOCK_UNLOCK(f);
             /* flow ownership is passed to the worker thread */
 

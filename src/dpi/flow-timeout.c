@@ -18,7 +18,10 @@
 
 //#include "detect.h"
 //#include "detect-engine-state.h"
+#include "app-layer-parser.h"
 #include "stream.h"
+#include "tmqh-packetpool.h"
+#include "util-time.h"
 
 //#include "app-layer-parser.h"
 //#include "app-layer.h"
@@ -238,8 +241,6 @@ Packet *FlowForceReassemblyPseudoPacketGet(int direction,
         return NULL;
     }
 
-    PACKET_PROFILING_START(p);
-
     return FlowForceReassemblyPseudoPacketSetup(p, direction, f, ssn);
 }
 
@@ -255,7 +256,7 @@ int FlowForceReassemblyNeedReassembly(Flow *f)
 {
 
     if (f == NULL || f->protoctx == NULL) {
-        SCReturnInt(0);
+        return (0);
     }
 
     TcpSession *ssn = (TcpSession *)f->protoctx;
@@ -272,7 +273,8 @@ int FlowForceReassemblyNeedReassembly(Flow *f)
 
     /* if app layer still needs some love, push through */
     if (f->alproto != ALPROTO_UNKNOWN && f->alstate != NULL) {
-        const uint64_t total_txs = AppLayerParserGetTxCnt(f, f->alstate);
+        //TODO:modify by haolipeng
+        /*const uint64_t total_txs = AppLayerParserGetTxCnt(f, f->alstate);
 
         if (AppLayerParserGetTransactionActive(f, f->alparser, STREAM_TOCLIENT) < total_txs)
         {
@@ -281,18 +283,18 @@ int FlowForceReassemblyNeedReassembly(Flow *f)
         if (AppLayerParserGetTransactionActive(f, f->alparser, STREAM_TOSERVER) < total_txs)
         {
             client = STREAM_HAS_UNPROCESSED_SEGMENTS_NEED_ONLY_DETECTION;
-        }
+        }*/
     }
 
     /* nothing to do */
     if (client == STREAM_HAS_UNPROCESSED_SEGMENTS_NONE &&
         server == STREAM_HAS_UNPROCESSED_SEGMENTS_NONE) {
-        SCReturnInt(0);
+        return (0);
     }
 
     f->ffr_ts = client;
     f->ffr_tc = server;
-    SCReturnInt(1);
+    return (1);
 }
 
 /**
@@ -307,8 +309,9 @@ int FlowForceReassemblyNeedReassembly(Flow *f)
  */
 void FlowForceReassemblyForFlow(Flow *f)
 {
-    const int thread_id = (int)f->thread_id[0];
-    TmThreadsInjectFlowById(f, thread_id);
+    //TODO:modify by haolipeng
+    //const int thread_id = (int)f->thread_id[0];
+    //TmThreadsInjectFlowById(f, thread_id);
 }
 
 /**

@@ -1,41 +1,43 @@
-//
-// Created by root on 23-4-17.
-//
-#include <stdlib.h>
-#include <string.h>
+#include "decode.h"
+#define DEFAULT_MTU 1500
+#define DEFAULT_PACKET_SIZE (DEFAULT_MTU + ETHERNET_HEADER_LEN)
+uint32_t default_packet_size = DEFAULT_PACKET_SIZE;
 
-#include "decode-thread-var.h"
-#include "threadvars.h"
-
-DecodeThreadVars *DecodeThreadVarsAlloc(ThreadVars *tv)
+inline int PacketCallocExtPkt(Packet *p, int datalen)
 {
-  DecodeThreadVars *dtv = NULL;
-
-  if ( (dtv = malloc(sizeof(DecodeThreadVars))) == NULL)
-    return NULL;
-  memset(dtv, 0, sizeof(DecodeThreadVars));
-
-  //TODO:modify by haolipeng
-  /*dtv->app_tctx = AppLayerGetCtxThread(tv);
-
-  if (OutputFlowLogThreadInit(tv, NULL, &dtv->output_flow_thread_data) != TM_ECODE_OK) {
-    SCLogError(SC_ERR_THREAD_INIT, "initializing flow log API for thread failed");
-    DecodeThreadVarsFree(tv, dtv);
-    return NULL;
-  }*/
-
-  return dtv;
+  if (! p->ext_pkt) {
+    p->ext_pkt = calloc(1, datalen);
+    if (unlikely(p->ext_pkt == NULL)) {
+      SET_PKT_LEN(p, 0);
+      return -1;
+    }
+  }
+  return 0;
 }
 
-void DecodeThreadVarsFree(ThreadVars *tv, DecodeThreadVars *dtv)
+void PacketFree(Packet *p)
 {
-  if (dtv != NULL) {
-    /*if (dtv->app_tctx != NULL)
-      AppLayerDestroyCtxThread(dtv->app_tctx);
+   PACKET_DESTRUCTOR(p);
+   free(p);
+}
 
-    if (dtv->output_flow_thread_data != NULL)
-      OutputFlowLogThreadDeinit(tv, dtv->output_flow_thread_data);*/
-
-    free(dtv);
+/**
+ * \brief Get a malloced packet.
+ *
+ * \retval p packet, NULL on error
+ */
+Packet *PacketGetFromAlloc(void)
+{
+  Packet *p = malloc(SIZE_OF_PACKET);
+  if (unlikely(p == NULL)) {
+    return NULL;
   }
+
+  memset(p, 0, SIZE_OF_PACKET);
+  PACKET_INITIALIZE(p);//init the packet
+  p->ReleasePacket = PacketFree;
+  p->flags |= PKT_ALLOC;
+
+  SCLogDebug("allocated a new packet only using alloc...");
+  return p;
 }

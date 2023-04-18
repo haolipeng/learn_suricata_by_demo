@@ -1,7 +1,3 @@
-//
-// Created by root on 4/11/23.
-//
-
 #ifndef NET_THREAT_DETECT_UTIL_DEBUG_H
 #define NET_THREAT_DETECT_UTIL_DEBUG_H
 
@@ -159,6 +155,13 @@ void SCLogErr(int x, const char *file, const char *func, const int line,
     SCLogError(x, __VA_ARGS__);                                             \
     exit(EXIT_FAILURE);                                                     \
 } while(0)
+
+#define SCLogWarning(err_code, ...) SCLogErr(SC_LOG_WARNING, \
+        __FILE__, __FUNCTION__, __LINE__, \
+        err_code, __VA_ARGS__)
+
+#define SCLogConfig(...) SCLog(SC_LOG_CONFIG, \
+        __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 
 /* Avoid the overhead of using the debugging subsystem, in production mode */
 #ifndef DEBUG

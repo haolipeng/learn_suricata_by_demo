@@ -1,7 +1,3 @@
-//
-// Created by root on 3/28/23.
-//
-
 #ifndef NET_THREAT_DETECT_DECODE_UDP_H
 #define NET_THREAT_DETECT_DECODE_UDP_H
 

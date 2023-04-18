@@ -1,8 +1,15 @@
 #include "flow.h"
+#include "conf.h"
+#include "flow-manager.h"
 #include "flow-private.h"
+#include "flow-spare-pool.h"
 #include "flow-util.h"
 #include "stream-tcp-private.h"
 #include "stream.h"
+#include "util-byte.h"
+#include "util-misc.h"
+#include "util-random.h"
+#include <mm_malloc.h>
 #include <sys/time.h>
 
 #define FLOW_DEFAULT_EMERGENCY_RECOVERY 30
@@ -304,20 +311,7 @@ static inline void FlowUpdateTTL(Flow *f, Packet *p, uint8_t ttl)
 static inline void FlowUpdateEthernet(ThreadVars *tv, DecodeThreadVars *dtv,
                                       Flow *f, EthernetHdr *ethh, bool toserver)
 {
-  if (ethh && MacSetFlowStorageEnabled()) {
-    MacSet *ms = FlowGetStorageById(f, MacSetGetFlowStorageID());
-    if (ms != NULL) {
-      if (toserver) {
-        MacSetAddWithCtr(ms, ethh->eth_src, ethh->eth_dst, tv,
-                         dtv->counter_max_mac_addrs_src,
-                         dtv->counter_max_mac_addrs_dst);
-      } else {
-        MacSetAddWithCtr(ms, ethh->eth_dst, ethh->eth_src, tv,
-                         dtv->counter_max_mac_addrs_dst,
-                         dtv->counter_max_mac_addrs_src);
-      }
-    }
-  }
+
 }
 
 /** \brief Update Packet and Flow
@@ -531,7 +525,7 @@ void FlowInitConfig(char quiet)
     }
   }
 
-  flow_config.memcap_policy = ExceptionPolicyParse("flow.memcap-policy", false);
+  //flow_config.memcap_policy = ExceptionPolicyParse("flow.memcap-policy", false);
 
   SCLogDebug("Flow config from suricata.yaml: memcap: %"PRIu64", hash-size: "
              "%"PRIu32", prealloc: %"PRIu32, SC_ATOMIC_GET(flow_config.memcap),
@@ -548,7 +542,7 @@ void FlowInitConfig(char quiet)
                (uintmax_t)sizeof(FlowBucket));
     exit(EXIT_FAILURE);
   }
-  flow_hash = SCMallocAligned(flow_config.hash_size * sizeof(FlowBucket), CLS);
+  flow_hash = _mm_malloc(flow_config.hash_size * sizeof(FlowBucket), 64);
   if (unlikely(flow_hash == NULL)) {
     FatalError(SC_ERR_FATAL,
                "Fatal error encountered in FlowInitConfig. Exiting...");
@@ -581,7 +575,9 @@ void FlowInitConfig(char quiet)
   //初始化tcp、udp、icmp等各协议的超时时间
   FlowInitFlowProto();
 
-  uint32_t sz = sizeof(Flow) + FlowStorageSize();
+  //TODO:modify the sz
+  //uint32_t sz = sizeof(Flow) + FlowStorageSize();
+  uint32_t sz = sizeof(Flow);
   SCLogConfig("flow size %u, memcap allows for %" PRIu64 " flows. Per hash row in perfect "
               "conditions %" PRIu64,
               sz, flow_memcap_copy / sz, (flow_memcap_copy / sz) / flow_config.hash_size);
@@ -622,7 +618,7 @@ void FlowShutdown(void)
 
       FBLOCK_DESTROY(&flow_hash[u]);
     }
-    SCFreeAligned(flow_hash);
+    _mm_free(flow_hash);
     flow_hash = NULL;
   }
   (void) SC_ATOMIC_SUB(flow_memuse, flow_config.hash_size * sizeof(FlowBucket));
@@ -1008,8 +1004,9 @@ void FlowInitFlowProto(void)
 
 int FlowClearMemory(Flow* f, uint8_t proto_map)
 {
+  //TODO:flow has expectation,comment by haolipeng
   if (unlikely(f->flags & FLOW_HAS_EXPECTATION)) {
-    AppLayerExpectationClean(f);
+    //AppLayerExpectationClean(f);
   }
 
   /* call the protocol specific free function if we have one */
@@ -1017,11 +1014,12 @@ int FlowClearMemory(Flow* f, uint8_t proto_map)
     flow_freefuncs[proto_map].Freefunc(f->protoctx);
   }
 
-  FlowFreeStorage(f);
+  //TODO:comment by haolipeng
+  //FlowFreeStorage(f);
 
   FLOW_RECYCLE(f);
 
-  SCReturnInt(1);
+  return (1);
 }
 
 /**

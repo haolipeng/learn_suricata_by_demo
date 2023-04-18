@@ -1,16 +1,24 @@
-//
-// Created by root on 23-4-17.
-//
-
 #ifndef NET_THREAT_DETECT_PACKET_DEFINE_H
 #define NET_THREAT_DETECT_PACKET_DEFINE_H
 
 #include "address-port.h"
+#include "app-layer-events.h"
 #include "decode-ethernet.h"
 #include "decode-ipv4.h"
 #include "decode-ipv6.h"
 #include "decode-tcp.h"
 #include "decode-udp.h"
+
+/** number of decoder events we support per packet. Power of 2 minus 1
+ *  for memory layout */
+#define PACKET_ENGINE_EVENT_MAX 15
+
+/** data structure to store decoder, defrag and stream events */
+typedef struct PacketEngineEvents_ {
+  uint8_t cnt;                                /**< number of events */
+  uint8_t events[PACKET_ENGINE_EVENT_MAX];   /**< array of events */
+} PacketEngineEvents;
+
 typedef struct Packet_
 {
   /* Addresses, Ports and protocol
@@ -108,6 +116,11 @@ typedef struct Packet_
   /* Incoming interface */
   struct LiveDevice_ *livedev;
 
+  /* engine events */
+  PacketEngineEvents events;
+
+  AppLayerDecoderEvents *app_layer_events;
+
   /* double linked list ptrs */
   struct Packet_ *next;
   struct Packet_ *prev;
@@ -124,5 +137,8 @@ typedef struct Packet_
    */
   struct PktPool_ *pool;
 } Packet;
+
+extern uint32_t default_packet_size;
+#define SIZE_OF_PACKET (default_packet_size + sizeof(Packet))
 
 #endif // NET_THREAT_DETECT_PACKET_DEFINE_H

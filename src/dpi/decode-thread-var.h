@@ -1,7 +1,3 @@
-//
-// Created by root on 23-4-17.
-//
-
 #ifndef NET_THREAT_DETECT_DECODE_THREAD_VAR_H
 #define NET_THREAT_DETECT_DECODE_THREAD_VAR_H
 #include <stdint.h>
@@ -84,5 +80,9 @@ typedef struct DecodeThreadVars_
   void *output_flow_thread_data;
 
 } DecodeThreadVars;
+
+typedef struct ThreadVars_ ThreadVars;
+DecodeThreadVars *DecodeThreadVarsAlloc(ThreadVars *);
+void DecodeThreadVarsFree(ThreadVars *, DecodeThreadVars *);
 
 #endif // NET_THREAT_DETECT_DECODE_THREAD_VAR_H

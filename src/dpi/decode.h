@@ -8,6 +8,7 @@
 #include <stdint.h>
 #include <netinet/in.h>
 #include <limits.h>
+#include <stdlib.h>
 
 #include "address-port.h"
 #include "utils/helper.h"
@@ -21,7 +22,6 @@
 #include "decode-tcp.h"
 
 #include "flow.h"
-#include "threadvars.h"
 #include "util-debug.h"
 
 enum PktSrcEnum {
@@ -40,15 +40,24 @@ enum PktSrcEnum {
 };
 
 ////////////////////////////////全局函数声明区////////////////////////////////
-typedef struct ThreadVars_ ThreadVars;
-DecodeThreadVars *DecodeThreadVarsAlloc(ThreadVars *);
-void DecodeThreadVarsFree(ThreadVars *, DecodeThreadVars *);
+int PacketCallocExtPkt(Packet *p, int datalen);
+
+Packet *PacketGetFromAlloc(void);
+void PacketFree(Packet *p);
 
 int DecodeEthernet(Packet *, const uint8_t *, uint32_t);
 int DecodeIPV4(Packet *, const uint8_t *, uint16_t);
 int DecodeIPV6(Packet *, const uint8_t *, uint16_t);
 int DecodeUDP(Packet *, const uint8_t *, uint16_t);
 int DecodeTCP(Packet *, const uint8_t *, uint16_t);
+
+#define DecodeSetNoPacketInspectionFlag(p) do { \
+        (p)->flags |= PKT_NOPACKET_INSPECTION;  \
+    } while (0)
+
+#define DecodeSetNoPayloadInspectionFlag(p) do { \
+        (p)->flags |= PKT_NOPAYLOAD_INSPECTION;  \
+    } while (0)
 
 #define PKT_IS_IPV4(p)      (((p)->ip4h != NULL))
 #define PKT_IS_IPV6(p)      (((p)->ip6h != NULL))
@@ -210,6 +219,14 @@ typedef uint16_t Port;
  * \todo we need more & maybe put them in a separate file? */
 #define LINKTYPE_ETHERNET    1 //TODO:modify by haolipeng #define DLT_EN10MB	1	/* Ethernet (10Mb) */
 
+typedef struct AppLayerDecoderEvents_ AppLayerDecoderEvents;
+void AppLayerDecoderEventsResetEvents(AppLayerDecoderEvents *events);
+
+#define PACKET_RESET_CHECKSUMS(p) do { \
+        (p)->level3_comp_csum = -1;   \
+        (p)->level4_comp_csum = -1;   \
+    } while (0)
+
 /* if p uses extended data, free them */
 #define PACKET_FREE_EXTDATA(p) do {                 \
         if ((p)->ext_pkt) {                         \
@@ -219,6 +236,16 @@ typedef uint16_t Port;
             (p)->ext_pkt = NULL;                    \
         }                                           \
     } while(0)
+
+#define PACKET_RELEASE_REFS(p) do {              \
+        FlowDeReference(&((p)->flow));          \
+    } while (0)
+
+#define PACKET_INITIALIZE(p)                                                                       \
+    {                                                                                              \
+        PACKET_RESET_CHECKSUMS((p));                                                               \
+        (p)->livedev = NULL;                                                                       \
+    }
 
 #define PACKET_REINIT(p)                                                                           \
     do {                                                                                           \
@@ -237,10 +264,6 @@ typedef uint16_t Port;
         (p)->ts.tv_sec = 0;                                                                        \
         (p)->ts.tv_usec = 0;                                                                       \
         (p)->datalink = 0;                                                                         \
-        if ((p)->pktvar != NULL) {                                                                 \
-            PktVarFree((p)->pktvar);                                                               \
-            (p)->pktvar = NULL;                                                                    \
-        }                                                                                          \
         (p)->ethh = NULL;                                                                          \
         if ((p)->ip4h != NULL) {                                                                   \
             CLEAR_IPV4_PACKET((p));                                                                \
@@ -254,40 +277,22 @@ typedef uint16_t Port;
         if ((p)->udph != NULL) {                                                                   \
             CLEAR_UDP_PACKET((p));                                                                 \
         }                                                                                          \
-        if ((p)->sctph != NULL) {                                                                  \
-            CLEAR_SCTP_PACKET((p));                                                                \
-        }                                                                                          \
-        if ((p)->icmpv4h != NULL) {                                                                \
-            CLEAR_ICMPV4_PACKET((p));                                                              \
-        }                                                                                          \
-        if ((p)->icmpv6h != NULL) {                                                                \
-            CLEAR_ICMPV6_PACKET((p));                                                              \
-        }                                                                                          \
-        (p)->ppph = NULL;                                                                          \
-        (p)->pppoesh = NULL;                                                                       \
-        (p)->pppoedh = NULL;                                                                       \
-        (p)->greh = NULL;                                                                          \
         (p)->payload = NULL;                                                                       \
         (p)->payload_len = 0;                                                                      \
-        (p)->BypassPacketsFlow = NULL;                                                             \
         (p)->pktlen = 0;                                                                           \
-        (p)->alerts.cnt = 0;                                                                       \
-        (p)->alerts.discarded = 0;                                                                 \
-        (p)->alerts.suppressed = 0;                                                                \
-        (p)->alerts.drop.action = 0;                                                               \
-        (p)->pcap_cnt = 0;                                                                         \
-        (p)->tunnel_rtv_cnt = 0;                                                                   \
-        (p)->tunnel_tpr_cnt = 0;                                                                   \
         (p)->events.cnt = 0;                                                                       \
         AppLayerDecoderEventsResetEvents((p)->app_layer_events);                                   \
         (p)->next = NULL;                                                                          \
         (p)->prev = NULL;                                                                          \
-        (p)->root = NULL;                                                                          \
         (p)->livedev = NULL;                                                                       \
         PACKET_RESET_CHECKSUMS((p));                                                               \
-        PACKET_PROFILING_RESET((p));                                                               \
-        p->tenant_id = 0;                                                                          \
-        p->nb_decoded_layers = 0;                                                                  \
+    } while (0)
+
+#define PACKET_DESTRUCTOR(p)                                                                       \
+    do {                                                                                           \
+        PACKET_RELEASE_REFS((p));                                                                  \
+        PACKET_FREE_EXTDATA((p));                                                                  \
+        AppLayerDecoderEventsFreeEvents(&(p)->app_layer_events);                                   \
     } while (0)
 
 static inline bool DecodeNetworkLayer(const uint16_t proto, Packet *p, const uint8_t *data, const uint32_t len)

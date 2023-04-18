@@ -44,7 +44,7 @@ typedef struct PktPool_ {
     PktPoolLockedStack return_stack;
 } PktPool;
 
-/*Packet *TmqhInputPacketpool(ThreadVars *);
+Packet *TmqhInputPacketpool(ThreadVars *);
 void TmqhOutputPacketpool(ThreadVars *, Packet *);
 void TmqhReleasePacketsToPacketPool(PacketQueue *);
 void TmqhPacketpoolRegister(void);
@@ -55,7 +55,6 @@ void PacketPoolReturnPacket(Packet *p);
 void PacketPoolInit(void);
 void PacketPoolInitEmpty(void);
 void PacketPoolDestroy(void);
-void PacketPoolPostRunmodes(void);*/
-void PacketPoolReturnPacket(Packet *p);
+void PacketPoolPostRunmodes(void);
 
 #endif /* __TMQH_PACKETPOOL_H__ */

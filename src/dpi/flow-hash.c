@@ -23,19 +23,15 @@
  *
  *  Flow Hashing functions.
  */
-
-#include "suricata-common.h"
 #include "threads.h"
 
 #include "decode.h"
-#include "detect-engine-state.h"
 
 #include "flow.h"
 #include "flow-hash.h"
 #include "flow-util.h"
 #include "flow-private.h"
 #include "flow-manager.h"
-#include "flow-storage.h"
 #include "flow-timeout.h"
 #include "flow-spare-pool.h"
 #include "app-layer-parser.h"
@@ -43,16 +39,12 @@
 #include "util-time.h"
 #include "util-debug.h"
 
+#include "conf.h"
+#include "stream-tcp.h"
 #include "util-hash-lookup3.h"
 
-#include "conf.h"
-#include "output.h"
-#include "output-flow.h"
-#include "stream-tcp.h"
-#include "util-exception-policy.h"
-
 extern TcpStreamCnf stream_config;
-
+uint16_t g_vlan_mask = 0xffff;
 
 FlowBucket *flow_hash;
 SC_ATOMIC_EXTERN(unsigned int, flow_prune_idx);
@@ -88,7 +80,7 @@ typedef struct FlowHashKey4_ {
             uint32_t addrs[2];
             uint16_t ports[2];
             uint16_t proto; /**< u16 so proto and recur add up to u32 */
-            uint16_t recur; /**< u16 so proto and recur add up to u32 */
+            //uint16_t recur; /**< u16 so proto and recur add up to u32 */
             uint16_t vlan_id[2];
         };
         const uint32_t u32[5];
@@ -138,29 +130,9 @@ static inline uint32_t FlowGetHash(const Packet *p)
             fhk.ports[pi] = p->dp;
 
             fhk.proto = (uint16_t)p->proto;
-            fhk.recur = (uint16_t)p->recursion_level;
+            //fhk.recur = (uint16_t)p->recursion_level;
             /* g_vlan_mask sets the vlan_ids to 0 if vlan.use-for-tracking
              * is disabled. */
-            fhk.vlan_id[0] = p->vlan_id[0] & g_vlan_mask;
-            fhk.vlan_id[1] = p->vlan_id[1] & g_vlan_mask;
-
-            hash = hashword(fhk.u32, 5, flow_config.hash_rand);
-
-        } else if (ICMPV4_DEST_UNREACH_IS_VALID(p)) {
-            uint32_t psrc = IPV4_GET_RAW_IPSRC_U32(ICMPV4_GET_EMB_IPV4(p));
-            uint32_t pdst = IPV4_GET_RAW_IPDST_U32(ICMPV4_GET_EMB_IPV4(p));
-            FlowHashKey4 fhk;
-
-            const int ai = (psrc > pdst);
-            fhk.addrs[1-ai] = psrc;
-            fhk.addrs[ai] = pdst;
-
-            const int pi = (p->icmpv4vars.emb_sport > p->icmpv4vars.emb_dport);
-            fhk.ports[1-pi] = p->icmpv4vars.emb_sport;
-            fhk.ports[pi] = p->icmpv4vars.emb_dport;
-
-            fhk.proto = (uint16_t)ICMPV4_GET_EMB_PROTO(p);
-            fhk.recur = (uint16_t)p->recursion_level;
             fhk.vlan_id[0] = p->vlan_id[0] & g_vlan_mask;
             fhk.vlan_id[1] = p->vlan_id[1] & g_vlan_mask;
 
@@ -174,7 +146,7 @@ static inline uint32_t FlowGetHash(const Packet *p)
             fhk.ports[0] = 0xfeed;
             fhk.ports[1] = 0xbeef;
             fhk.proto = (uint16_t)p->proto;
-            fhk.recur = (uint16_t)p->recursion_level;
+            //fhk.recur = (uint16_t)p->recursion_level;
             fhk.vlan_id[0] = p->vlan_id[0] & g_vlan_mask;
             fhk.vlan_id[1] = p->vlan_id[1] & g_vlan_mask;
 
@@ -206,7 +178,7 @@ static inline uint32_t FlowGetHash(const Packet *p)
         fhk.ports[1-pi] = p->sp;
         fhk.ports[pi] = p->dp;
         fhk.proto = (uint16_t)p->proto;
-        fhk.recur = (uint16_t)p->recursion_level;
+        //fhk.recur = (uint16_t)p->recursion_level;
         fhk.vlan_id[0] = p->vlan_id[0] & g_vlan_mask;
         fhk.vlan_id[1] = p->vlan_id[1] & g_vlan_mask;
 
@@ -239,7 +211,7 @@ uint32_t FlowKeyGetHash(FlowKey *fk)
         fhk.ports[pi] = fk->dp;
 
         fhk.proto = (uint16_t)fk->proto;
-        fhk.recur = (uint16_t)fk->recursion_level;
+        //fhk.recur = (uint16_t)fk->recursion_level;
         fhk.vlan_id[0] = fk->vlan_id[0] & g_vlan_mask;
         fhk.vlan_id[1] = fk->vlan_id[1] & g_vlan_mask;
 
@@ -271,7 +243,7 @@ uint32_t FlowKeyGetHash(FlowKey *fk)
         fhk.ports[1-pi] = fk->sp;
         fhk.ports[pi] = fk->dp;
         fhk.proto = (uint16_t)fk->proto;
-        fhk.recur = (uint16_t)fk->recursion_level;
+        //fhk.recur = (uint16_t)fk->recursion_level;
         fhk.vlan_id[0] = fk->vlan_id[0] & g_vlan_mask;
         fhk.vlan_id[1] = fk->vlan_id[1] & g_vlan_mask;
 
@@ -316,7 +288,6 @@ static inline bool CmpFlowPacket(const Flow *f, const Packet *p)
     const uint32_t *p_dst = p->dst.address.address_un_data32;
     return CmpAddrsAndPorts(f_src, f_dst, f->sp, f->dp, p_src, p_dst, p->sp,
                             p->dp) && f->proto == p->proto &&
-            f->recursion_level == p->recursion_level &&
             CmpVlanIds(f->vlan_id, p->vlan_id);
 }
 
@@ -332,74 +303,6 @@ static inline bool CmpFlowKey(const Flow *f, const FlowKey *k)
             CmpVlanIds(f->vlan_id, k->vlan_id);
 }
 
-static inline bool CmpAddrsAndICMPTypes(const uint32_t src1[4],
-    const uint32_t dst1[4], uint8_t icmp_s_type1, uint8_t icmp_d_type1,
-    const uint32_t src2[4], const uint32_t dst2[4], uint8_t icmp_s_type2,
-    uint8_t icmp_d_type2)
-{
-    /* Compare the source and destination addresses. If they are not equal,
-     * compare the first source address with the second destination address,
-     * and vice versa. Likewise for icmp types. */
-    return (CmpAddrs(src1, src2) && CmpAddrs(dst1, dst2) &&
-            icmp_s_type1 == icmp_s_type2 && icmp_d_type1 == icmp_d_type2) ||
-           (CmpAddrs(src1, dst2) && CmpAddrs(dst1, src2) &&
-            icmp_s_type1 == icmp_d_type2 && icmp_d_type1 == icmp_s_type2);
-}
-
-static inline bool CmpFlowICMPPacket(const Flow *f, const Packet *p)
-{
-    const uint32_t *f_src = f->src.address.address_un_data32;
-    const uint32_t *f_dst = f->dst.address.address_un_data32;
-    const uint32_t *p_src = p->src.address.address_un_data32;
-    const uint32_t *p_dst = p->dst.address.address_un_data32;
-    return CmpAddrsAndICMPTypes(f_src, f_dst, f->icmp_s.type,
-                f->icmp_d.type, p_src, p_dst, p->icmp_s.type, p->icmp_d.type) &&
-            f->proto == p->proto && f->recursion_level == p->recursion_level &&
-            CmpVlanIds(f->vlan_id, p->vlan_id);
-}
-
-/**
- *  \brief See if a ICMP packet belongs to a flow by comparing the embedded
- *         packet in the ICMP error packet to the flow.
- *
- *  \param f flow
- *  \param p ICMP packet
- *
- *  \retval 1 match
- *  \retval 0 no match
- */
-static inline int FlowCompareICMPv4(Flow *f, const Packet *p)
-{
-    if (ICMPV4_DEST_UNREACH_IS_VALID(p)) {
-        /* first check the direction of the flow, in other words, the client ->
-         * server direction as it's most likely the ICMP error will be a
-         * response to the clients traffic */
-        if ((f->src.addr_data32[0] == IPV4_GET_RAW_IPSRC_U32(ICMPV4_GET_EMB_IPV4(p))) &&
-                (f->dst.addr_data32[0] == IPV4_GET_RAW_IPDST_U32(ICMPV4_GET_EMB_IPV4(p))) &&
-                f->sp == p->icmpv4vars.emb_sport && f->dp == p->icmpv4vars.emb_dport &&
-                f->proto == ICMPV4_GET_EMB_PROTO(p) && f->recursion_level == p->recursion_level &&
-                CmpVlanIds(f->vlan_id, p->vlan_id)) {
-            return 1;
-
-        /* check the less likely case where the ICMP error was a response to
-         * a packet from the server. */
-        } else if ((f->dst.addr_data32[0] == IPV4_GET_RAW_IPSRC_U32(ICMPV4_GET_EMB_IPV4(p))) &&
-                   (f->src.addr_data32[0] == IPV4_GET_RAW_IPDST_U32(ICMPV4_GET_EMB_IPV4(p))) &&
-                   f->dp == p->icmpv4vars.emb_sport && f->sp == p->icmpv4vars.emb_dport &&
-                   f->proto == ICMPV4_GET_EMB_PROTO(p) &&
-                   f->recursion_level == p->recursion_level && CmpVlanIds(f->vlan_id, p->vlan_id)) {
-            return 1;
-        }
-
-        /* no match, fall through */
-    } else {
-        /* just treat ICMP as a normal proto for now */
-        return CmpFlowICMPPacket(f, p);
-    }
-
-    return 0;
-}
-
 void FlowSetupPacket(Packet *p)
 {
     p->flags |= PKT_WANTS_FLOW;
@@ -408,11 +311,12 @@ void FlowSetupPacket(Packet *p)
 
 static inline int FlowCompare(Flow *f, const Packet *p)
 {
-    if (p->proto == IPPROTO_ICMP) {
-        return FlowCompareICMPv4(f, p);
+    return CmpFlowPacket(f, p);
+    /*if (p->proto == IPPROTO_ICMP) {
+        //return FlowCompareICMPv4(f, p);
     } else {
         return CmpFlowPacket(f, p);
-    }
+    }*/
 }
 
 /**
@@ -440,38 +344,26 @@ static inline int FlowCreateCheck(const Packet *p, const bool emerg)
         }
     }
 
-    if (PKT_IS_ICMPV4(p)) {
-        if (ICMPV4_IS_ERROR_MSG(p)) {
-            return 0;
-        }
-    }
-
     return 1;
 }
 
 static inline void FlowUpdateCounter(ThreadVars *tv, DecodeThreadVars *dtv,
         uint8_t proto)
 {
-#ifdef UNITTESTS
-    if (tv && dtv) {
-#endif
-        switch (proto){
-            case IPPROTO_UDP:
-                StatsIncr(tv, dtv->counter_flow_udp);
-                break;
-            case IPPROTO_TCP:
-                StatsIncr(tv, dtv->counter_flow_tcp);
-                break;
-            case IPPROTO_ICMP:
-                StatsIncr(tv, dtv->counter_flow_icmp4);
-                break;
-            case IPPROTO_ICMPV6:
-                StatsIncr(tv, dtv->counter_flow_icmp6);
-                break;
-        }
-#ifdef UNITTESTS
-    }
-#endif
+      switch (proto){
+          case IPPROTO_UDP:
+              //StatsIncr(tv, dtv->counter_flow_udp);
+              break;
+          case IPPROTO_TCP:
+              //StatsIncr(tv, dtv->counter_flow_tcp);
+              break;
+          case IPPROTO_ICMP:
+              //StatsIncr(tv, dtv->counter_flow_icmp4);
+              break;
+          case IPPROTO_ICMPV6:
+              //StatsIncr(tv, dtv->counter_flow_icmp6);
+              break;
+      }
 }
 
 /** \internal
@@ -499,29 +391,20 @@ static inline Flow *FlowSpareSync(ThreadVars *tv, FlowLookupStruct *fls,
         f = FlowQueuePrivateGetFromTop(&fls->spare_queue);
         spare_sync = true;
     }
-#ifdef UNITTESTS
-    if (tv && fls->dtv) {
-#endif
-        if (spare_sync) {
-            if (f != NULL) {
-                //StatsAddUI64(tv, fls->dtv->counter_flow_spare_sync_avg, fls->spare_queue.len+1);
-                if (fls->spare_queue.len < 99) {
-                    StatsIncr(tv, fls->dtv->counter_flow_spare_sync_incomplete);
-                }
-            } else if (fls->spare_queue.len == 0) {
-                StatsIncr(tv, fls->dtv->counter_flow_spare_sync_empty);
-            }
-            StatsIncr(tv, fls->dtv->counter_flow_spare_sync);
-        }
-#ifdef UNITTESTS
-    }
-#endif
-    return f;
-}
 
-static inline void NoFlowHandleIPS(Packet *p)
-{
-    ExceptionPolicyApply(p, flow_config.memcap_policy, PKT_DROP_REASON_FLOW_MEMCAP);
+      if (spare_sync) {
+          if (f != NULL) {
+              //StatsAddUI64(tv, fls->dtv->counter_flow_spare_sync_avg, fls->spare_queue.len+1);
+              if (fls->spare_queue.len < 99) {
+                  //StatsIncr(tv, fls->dtv->counter_flow_spare_sync_incomplete);
+              }
+          } else if (fls->spare_queue.len == 0) {
+              //StatsIncr(tv, fls->dtv->counter_flow_spare_sync_empty);
+          }
+          //StatsIncr(tv, fls->dtv->counter_flow_spare_sync);
+      }
+
+    return f;
 }
 
 /**
@@ -537,14 +420,13 @@ static inline void NoFlowHandleIPS(Packet *p)
  */
 static Flow *FlowGetNew(ThreadVars *tv, FlowLookupStruct *fls, Packet *p)
 {
-	//紧急模式标志
     const bool emerg = ((SC_ATOMIC_GET(flow_flags) & FLOW_EMERGENCY) != 0);
 #ifdef DEBUG
     if (g_eps_flow_memcap != UINT64_MAX && g_eps_flow_memcap == p->pcap_cnt) {
         return NULL;
     }
 #endif
-	//紧急模式下，tcp的非syn包不生成flow
+    //紧急模式下，tcp的非syn包不生成flow
     if (FlowCreateCheck(p, emerg) == 0) {
         return NULL;
     }
@@ -554,14 +436,14 @@ static Flow *FlowGetNew(ThreadVars *tv, FlowLookupStruct *fls, Packet *p)
 	//从线程所属的flow空闲队列里获取flow，如果获取成功则返回flow
     Flow *f = FlowQueuePrivateGetFromTop(&fls->spare_queue);
     if (f == NULL) {
-		//获取flow失败，则从全局flow内存池中获取一个flow队列，再从flow队列中获取flow
+        //获取flow失败，则从全局flow内存池中获取一个flow队列，再从flow队列中获取flow
         f = FlowSpareSync(tv, fls, p, emerg);
     }
-	//全局flow内存池，也没有flow队列
+
+    //全局flow内存池，也没有flow队列
     if (f == NULL) {
-        /* If we reached the max memcap, we get a used flow */
-		//flow内存超过配置上限，则进入紧急模式
-        if (!(FLOW_CHECK_MEMCAP(sizeof(Flow) + FlowStorageSize()))) {
+        //flow内存超过配置上限，则进入紧急模式
+        if (!(FLOW_CHECK_MEMCAP(sizeof(Flow)))) {
             /* declare state of emergency */
             if (!(SC_ATOMIC_GET(flow_flags) & FLOW_EMERGENCY)) {
                 SC_ATOMIC_OR(flow_flags, FLOW_EMERGENCY);
@@ -569,19 +451,11 @@ static Flow *FlowGetNew(ThreadVars *tv, FlowLookupStruct *fls, Packet *p)
                 FlowWakeupFlowManagerThread();
             }
 
-			//从全局flow_hash表中的bucket中，将引用计数为0的项进行复用
+            //从全局flow_hash表中的bucket中，将引用计数为0的项进行复用
             f = FlowGetUsedFlow(tv, fls->dtv, &p->ts);
             if (f == NULL) {
-                NoFlowHandleIPS(p);
                 return NULL;
             }
-#ifdef UNITTESTS
-            if (tv != NULL && fls->dtv != NULL) {
-#endif
-                StatsIncr(tv, fls->dtv->counter_flow_get_used);
-#ifdef UNITTESTS
-            }
-#endif
             /* flow is still locked from FlowGetUsedFlow() */
             FlowUpdateCounter(tv, fls->dtv, p->proto);
             return f;
@@ -591,19 +465,11 @@ static Flow *FlowGetNew(ThreadVars *tv, FlowLookupStruct *fls, Packet *p)
 		//内存未达到上限，则直接在内存上分配flow
         f = FlowAlloc();
         if (f == NULL) {
-#ifdef UNITTESTS
-            if (tv != NULL && fls->dtv != NULL) {
-#endif
-                StatsIncr(tv, fls->dtv->counter_flow_memcap);
-#ifdef UNITTESTS
-            }
-#endif
-            NoFlowHandleIPS(p);
             return NULL;
         }
 
         /* flow is initialized but *unlocked* */
-		//flow已经初始化，但是并未上锁
+        //flow已经初始化，但是并未上锁
     } else {
         /* flow has been recycled before it went into the spare queue */
 
@@ -618,13 +484,6 @@ static Flow *FlowGetNew(ThreadVars *tv, FlowLookupStruct *fls, Packet *p)
 static Flow *TcpReuseReplace(ThreadVars *tv, FlowLookupStruct *fls, FlowBucket *fb, Flow *old_f,
         const uint32_t hash, Packet *p)
 {
-#ifdef UNITTESTS
-    if (tv != NULL && fls->dtv != NULL) {
-#endif
-        StatsIncr(tv, fls->dtv->counter_flow_tcp_reuse);
-#ifdef UNITTESTS
-    }
-#endif
     /* tag flow as reused so future lookups won't find it */
     old_f->flags |= FLOW_TCP_REUSED;
     /* time out immediately */
@@ -1120,17 +979,6 @@ static Flow *FlowGetUsedFlow(ThreadVars *tv, DecodeThreadVars *dtv, const struct
         f->flow_end_flags |= FLOW_END_FLAG_FORCED;
         if (SC_ATOMIC_GET(flow_flags) & FLOW_EMERGENCY)
             f->flow_end_flags |= FLOW_END_FLAG_EMERGENCY;
-
-        /* invoke flow log api */
-#ifdef UNITTESTS
-        if (dtv) {
-#endif
-            if (dtv->output_flow_thread_data) {
-                (void)OutputFlowLog(tv, dtv->output_flow_thread_data, f);
-            }
-#ifdef UNITTESTS
-        }
-#endif
 
         FlowClearMemory(f, f->protomap);
 

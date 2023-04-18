@@ -1,13 +1,14 @@
-#include <stdbool.h>
-#include <string.h>
-#include <limits.h>
-#include "tree.h"
-#include "stream-tcp-private.h"
 #include "decode.h"
 #include "stream-tcp-inline.h"
+#include "stream-tcp-private.h"
 #include "stream-tcp-reassemble.h"
+#include "stream.h"
+#include "tree.h"
+#include <limits.h>
+#include <stdbool.h>
+#include <string.h>
 
-//函数声明区
+// 函数声明区
 static void StreamTcpRemoveSegmentFromStream(TcpStream *stream, TcpSegment *seg);
 static int check_overlap_different_data = 0;
 
@@ -493,7 +494,7 @@ static int DoHandleData(TcpStream *stream, TcpSegment *seg, TcpSegment *tree_seg
  *
  *  In case of error, this function returns the segment to the pool
  */
-int StreamTcpReassembleInsertSegment(TcpStream *stream, TcpSegment *seg, Packet *p,
+int StreamTcpReassembleInsertSegment(ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,TcpStream *stream, TcpSegment *seg, Packet *p,
                                      uint32_t pkt_seq, uint8_t *pkt_data, uint16_t pkt_datalen)
 {
     TcpSegment *dup_seg = NULL;
@@ -503,7 +504,6 @@ int StreamTcpReassembleInsertSegment(TcpStream *stream, TcpSegment *seg, Packet 
     SCLogDebug("DoInsertSegment returned %d", r);
     if (r < 0) {
         //StatsIncr(tv, ra_ctx->counter_tcp_reass_list_fail);
-        //TODO:modify by haolipeng
         StreamTcpSegmentReturntoPool(seg);
         return -1;
     }
@@ -518,8 +518,7 @@ int StreamTcpReassembleInsertSegment(TcpStream *stream, TcpSegment *seg, Packet 
             //StatsIncr(tv, ra_ctx->counter_tcp_reass_data_normal_fail);
             StreamTcpRemoveSegmentFromStream(stream, seg);
 
-            //TODO:modify by haolipeng
-            //StreamTcpSegmentReturntoPool(seg);
+            StreamTcpSegmentReturntoPool(seg);
             free(seg);
 
             return -1;
@@ -543,18 +542,16 @@ int StreamTcpReassembleInsertSegment(TcpStream *stream, TcpSegment *seg, Packet 
             if (r == 1) // r == 2 mean seg wasn't added to stream
                 StreamTcpRemoveSegmentFromStream(stream, seg);
 
-            //TODO:modify by haolipeng
-            //StreamTcpSegmentReturntoPool(seg);
+            StreamTcpSegmentReturntoPool(seg);
             free(seg);
 
             return -1;
         }
         if (r == 2) {
-            /*SCLogDebug("duplicate segment %u/%u, discard it",
-                       seg->seq, seg->payload_len);*/
+            SCLogDebug("duplicate segment %u/%u, discard it",
+                       seg->seq, seg->payload_len);
 
-            //TODO:modify by haolipeng
-            //StreamTcpSegmentReturntoPool(seg);
+            StreamTcpSegmentReturntoPool(seg);
             free(seg);
         }
     }
@@ -565,4 +562,92 @@ int StreamTcpReassembleInsertSegment(TcpStream *stream, TcpSegment *seg, Packet 
 static void StreamTcpRemoveSegmentFromStream(TcpStream *stream, TcpSegment *seg)
 {
     RB_REMOVE(TCPSEG, &stream->seg_tree, seg);
+}
+
+void StreamTcpPruneSession(Flow *f, uint8_t flags)
+{
+  if (f == NULL || f->protoctx == NULL) {
+    return ;
+  }
+
+  TcpSession *ssn = f->protoctx;
+  TcpStream *stream = NULL;
+
+  if (flags & STREAM_TOSERVER) {
+    stream = &ssn->client;
+  } else if (flags & STREAM_TOCLIENT) {
+    stream = &ssn->server;
+  } else {
+    return ;
+  }
+
+  if (stream->flags & STREAMTCP_STREAM_FLAG_NOREASSEMBLY) {
+    return;
+  }
+
+  if (stream->flags & STREAMTCP_STREAM_FLAG_DEPTH_REACHED) {
+    stream->flags |= STREAMTCP_STREAM_FLAG_NOREASSEMBLY;
+    SCLogDebug("ssn %p / stream %p: reassembly depth reached, "
+               "STREAMTCP_STREAM_FLAG_NOREASSEMBLY set", ssn, stream);
+    StreamTcpReturnStreamSegments(stream);
+    StreamingBufferClear(&stream->sb);
+    return;
+
+  } else if ((ssn->flags & STREAMTCP_FLAG_APP_LAYER_DISABLED) &&
+             (stream->flags & STREAMTCP_STREAM_FLAG_DISABLE_RAW)) {
+    SCLogDebug("ssn %p / stream %p: both app and raw are done, "
+               "STREAMTCP_STREAM_FLAG_NOREASSEMBLY set", ssn, stream);
+    stream->flags |= STREAMTCP_STREAM_FLAG_NOREASSEMBLY;
+    StreamTcpReturnStreamSegments(stream);
+    StreamingBufferClear(&stream->sb);
+    return;
+  }
+
+  const uint64_t left_edge = GetLeftEdge(f, ssn, stream);
+  if (left_edge && left_edge > STREAM_BASE_OFFSET(stream)) {
+    uint32_t slide = left_edge - STREAM_BASE_OFFSET(stream);
+    SCLogDebug("buffer sliding %u to offset %"PRIu64, slide, left_edge);
+    StreamingBufferSlideToOffset(&stream->sb, left_edge);
+    stream->base_seq += slide;
+
+    if (slide <= stream->app_progress_rel) {
+      stream->app_progress_rel -= slide;
+    } else {
+      stream->app_progress_rel = 0;
+    }
+    if (slide <= stream->raw_progress_rel) {
+      stream->raw_progress_rel -= slide;
+    } else {
+      stream->raw_progress_rel = 0;
+    }
+    if (slide <= stream->log_progress_rel) {
+      stream->log_progress_rel -= slide;
+    } else {
+      stream->log_progress_rel = 0;
+    }
+
+    SCLogDebug("stream base_seq %u at stream offset %"PRIu64,
+               stream->base_seq, STREAM_BASE_OFFSET(stream));
+  }
+
+  /* loop through the segments and remove all not in use */
+  TcpSegment *seg = NULL, *safe = NULL;
+  RB_FOREACH_SAFE(seg, TCPSEG, &stream->seg_tree, safe)
+  {
+    SCLogDebug("seg %p, SEQ %"PRIu32", LEN %"PRIu16", SUM %"PRIu32,
+               seg, seg->seq, TCP_SEG_LEN(seg),
+               (uint32_t)(seg->seq + TCP_SEG_LEN(seg)));
+
+    if (StreamTcpReturnSegmentCheck(stream, seg) == 0) {
+      SCLogDebug("not removing segment");
+      break;
+    }
+
+    StreamTcpRemoveSegmentFromStream(stream, seg);
+    StreamTcpSegmentReturntoPool(seg);
+    SCLogDebug("removed segment");
+    continue;
+  }
+
+  SCReturn;
 }
