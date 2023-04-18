@@ -1,5 +1,5 @@
+#include "decode/decode.h"
 #include "stream-tcp-private.h"
-#include "decode.h"
 
 RB_GENERATE(TCPSACK, StreamTcpSackRecord, rb, TcpSackCompare);
 

@@ -10,10 +10,10 @@
 #include <limits.h>
 #include <stdlib.h>
 
-#include "address-port.h"
-#include "utils/helper.h"
-#include "packet-define.h"
 #include "decode-events.h"
+#include "dpi/address-port.h"
+#include "dpi/packet-define.h"
+#include "utils/helper.h"
 
 #include "decode-ethernet.h"
 #include "decode-ipv4.h"
@@ -21,8 +21,8 @@
 #include "decode-udp.h"
 #include "decode-tcp.h"
 
-#include "flow.h"
-#include "util-debug.h"
+#include "flow/flow.h"
+#include "utils/util-debug.h"
 
 enum PktSrcEnum {
     PKT_SRC_WIRE = 1,

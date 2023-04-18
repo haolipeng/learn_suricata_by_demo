@@ -3,9 +3,9 @@
 #include "flow-private.h"
 #include "flow-queue.h"
 #include "flow-util.h"
-#include "threads.h"
-#include "util-debug.h"
-#include "util-error.h"
+#include "dpi/threads.h"
+#include "utils/util-debug.h"
+#include "utils/util-error.h"
 #include <stdlib.h>
 
 typedef struct FlowSparePool {

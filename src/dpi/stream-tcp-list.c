@@ -1,4 +1,4 @@
-#include "decode.h"
+#include "decode/decode.h"
 #include "stream-tcp-inline.h"
 #include "stream-tcp-private.h"
 #include "stream-tcp-reassemble.h"
@@ -564,6 +564,131 @@ static void StreamTcpRemoveSegmentFromStream(TcpStream *stream, TcpSegment *seg)
     RB_REMOVE(TCPSEG, &stream->seg_tree, seg);
 }
 
+static inline bool SegmentInUse(const TcpStream *stream, const TcpSegment *seg)
+{
+  /* if proto detect isn't done, we're not returning */
+  if (!(stream->flags & STREAMTCP_STREAM_FLAG_NOREASSEMBLY)) {
+    if (!(StreamTcpIsSetStreamFlagAppProtoDetectionCompleted(stream))) {
+      return true;
+    }
+  }
+
+  return false;
+}
+
+static inline bool StreamTcpReturnSegmentCheck(const TcpStream *stream, const TcpSegment *seg)
+{
+  if (SegmentInUse(stream, seg)) {
+    return false;
+  }
+
+  if (!(StreamingBufferSegmentIsBeforeWindow(&stream->sb, &seg->sbseg))) {
+    return false;
+  }
+
+  return true;
+}
+
+static inline uint64_t GetLeftEdge(Flow *f, TcpSession *ssn, TcpStream *stream)
+{
+  bool use_app = true;
+  bool use_raw = true;
+  bool use_log = true;
+
+  uint64_t left_edge = 0;
+  if ((ssn->flags & STREAMTCP_FLAG_APP_LAYER_DISABLED)) {
+    use_app = false; // app is dead
+  }
+
+  if (stream->flags & STREAMTCP_STREAM_FLAG_DISABLE_RAW) {
+    use_raw = false; // raw is dead
+  }
+
+  if (use_raw) {
+    uint64_t raw_progress = STREAM_RAW_PROGRESS(stream);
+
+    /* apply min inspect depth: if it is set we need to keep data
+         * before the raw progress. */
+    if (use_app && stream->min_inspect_depth) {
+      if (raw_progress < stream->min_inspect_depth)
+        raw_progress = 0;
+      else
+        raw_progress -= stream->min_inspect_depth;
+
+      SCLogDebug("stream->min_inspect_depth %u, raw_progress %"PRIu64,
+                 stream->min_inspect_depth, raw_progress);
+    }
+
+    if (use_app) {
+      left_edge = MIN(STREAM_APP_PROGRESS(stream), raw_progress);
+      SCLogDebug("left_edge %"PRIu64", using both app:%"PRIu64", raw:%"PRIu64,
+                 left_edge, STREAM_APP_PROGRESS(stream), raw_progress);
+    } else {
+      left_edge = raw_progress;
+      SCLogDebug("left_edge %"PRIu64", using only raw:%"PRIu64,
+                 left_edge, raw_progress);
+    }
+  } else if (use_app) {
+    left_edge = STREAM_APP_PROGRESS(stream);
+    SCLogDebug("left_edge %"PRIu64", using only app:%"PRIu64,
+               left_edge, STREAM_APP_PROGRESS(stream));
+  } else {
+    left_edge = STREAM_BASE_OFFSET(stream) + stream->sb.buf_offset;
+    SCLogDebug("no app & raw: left_edge %"PRIu64" (full stream)", left_edge);
+  }
+
+  if (use_log) {
+    if (use_app || use_raw) {
+      left_edge = MIN(left_edge, STREAM_LOG_PROGRESS(stream));
+    } else {
+      left_edge = STREAM_LOG_PROGRESS(stream);
+    }
+  }
+
+  uint64_t last_ack_abs = STREAM_BASE_OFFSET(stream);
+  if (STREAM_LASTACK_GT_BASESEQ(stream)) {
+    last_ack_abs += (stream->last_ack - stream->base_seq);
+  }
+  /* in IDS mode we shouldn't see the base_seq pass last_ack */
+  DEBUG_VALIDATE_BUG_ON(last_ack_abs < left_edge  && !f->ffr &&
+                        ssn->state < TCP_CLOSED);
+  left_edge = MIN(left_edge, last_ack_abs);
+
+  /* if we're told to look for overlaps with different data we should
+     * consider data that is ack'd as well. Injected packets may have
+     * been ack'd or injected packet may be too late. */
+  if (check_overlap_different_data) {
+    const uint32_t window = stream->window ? stream->window : 4096;
+    if (window < left_edge)
+      left_edge -= window;
+    else
+      left_edge = 0;
+
+    SCLogDebug("stream:%p left_edge %"PRIu64, stream, left_edge);
+  }
+
+  if (left_edge > 0) {
+    /* we know left edge based on the progress values now,
+         * lets adjust it to make sure in-use segments still have
+         * data */
+    TcpSegment *seg = NULL;
+    RB_FOREACH(seg, TCPSEG, &stream->seg_tree) {
+      if (TCP_SEG_OFFSET(seg) > left_edge) {
+        SCLogDebug("seg beyond left_edge, we're done");
+        break;
+      }
+
+      if (SegmentInUse(stream, seg)) {
+        left_edge = TCP_SEG_OFFSET(seg);
+        SCLogDebug("in-use seg before left_edge, adjust to %"PRIu64" and bail", left_edge);
+        break;
+      }
+    }
+  }
+
+  return left_edge;
+}
+
 void StreamTcpPruneSession(Flow *f, uint8_t flags)
 {
   if (f == NULL || f->protoctx == NULL) {
@@ -649,5 +774,5 @@ void StreamTcpPruneSession(Flow *f, uint8_t flags)
     continue;
   }
 
-  SCReturn;
+  return ;
 }

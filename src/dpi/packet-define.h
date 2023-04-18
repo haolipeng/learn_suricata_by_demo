@@ -2,12 +2,12 @@
 #define NET_THREAT_DETECT_PACKET_DEFINE_H
 
 #include "address-port.h"
-#include "app-layer-events.h"
-#include "decode-ethernet.h"
-#include "decode-ipv4.h"
-#include "decode-ipv6.h"
-#include "decode-tcp.h"
-#include "decode-udp.h"
+#include "app-layer/app-layer-events.h"
+#include "decode/decode-ethernet.h"
+#include "decode/decode-ipv4.h"
+#include "decode/decode-ipv6.h"
+#include "decode/decode-tcp.h"
+#include "decode/decode-udp.h"
 
 /** number of decoder events we support per packet. Power of 2 minus 1
  *  for memory layout */

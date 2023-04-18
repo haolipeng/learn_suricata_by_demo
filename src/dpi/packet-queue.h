@@ -4,8 +4,8 @@
 
 #ifndef NET_THREAT_DETECT_PACKET_QUEUE_H
 #define NET_THREAT_DETECT_PACKET_QUEUE_H
+#include "decode/decode.h"
 #include <stdint.h>
-#include "decode.h"
 
 typedef struct PacketQueueNoLock_ {
     Packet *top;

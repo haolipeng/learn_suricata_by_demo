@@ -3,13 +3,13 @@
 //
 
 #include "stream-tcp-reassemble.h"
-#include "decode.h"
 #include "packet-queue.h"
+#include "decode/decode.h"
+#include "utils/util-debug.h"
+#include "utils/util-pool-thread.h"
 #include "stream-tcp-private.h"
 #include "stream-tcp.h"
 #include "stream.h"
-#include "util-debug.h"
-#include "util-pool-thread.h"
 #include <string.h>
 
 #ifdef DEBUG

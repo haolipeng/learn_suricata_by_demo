@@ -8,8 +8,7 @@ set(CMAKE_BUILD_TYPE "debug")
 set(CMAKE_C_FLAGS_DEBUG "${CMAKE_C_FLAGS_DEBUG} -g -O0 -Wall -Werror -Wno-unused-result -Wno-unused-function -fstrict-aliasing -Wstrict-aliasing")
 set(CMAKE_C_FLAGS_RELEASE "${CMAKE_C_FLAGS_Release} -g -O0 -Wall -Werror -Wno-unused-result -Wno-unused-function -fstrict-aliasing -Wstrict-aliasing")
 
-include_directories(.)
-include_directories(src)
+include_directories(./src)
 include_directories(third-party/include)
 include_directories("/usr/local/include")
 
@@ -46,37 +45,39 @@ add_executable(net_threat_detect
         src/dpi/stream-tcp-inline.c src/dpi/stream-tcp-inline.h
         src/dpi/stream-tcp-sack.h src/dpi/stream-tcp-sack.c
 
-        src/dpi/decode-ethernet.h src/dpi/decode-ethernet.c
-        src/dpi/decode-ipv4.h src/dpi/decode-ipv4.c src/dpi/decode-ipv6.h
-        src/dpi/decode-tcp.h src/dpi/decode-tcp.c
-        src/dpi/decode-udp.h src/dpi/decode-udp.c
+        src/decode/decode-ethernet.h src/decode/decode-ethernet.c
+        src/decode/decode-ipv4.h src/decode/decode-ipv4.c src/decode/decode-ipv6.h
+        src/decode/decode-tcp.h src/decode/decode-tcp.c
+        src/decode/decode-udp.h src/decode/decode-udp.c
 
         src/dpi/packet-queue.h src/dpi/packet-queue.c
-        src/dpi/util-debug.h src/dpi/util-debug.c
-        src/dpi/util-error.h src/dpi/util-error.c
-        src/dpi/util-enum.h src/dpi/util-enum.c
-        src/dpi/util-atomic.h src/dpi/util-atomic.c
-        src/dpi/util-random.h src/dpi/util-random.c
-        src/dpi/util-misc.h src/dpi/util-misc.c
-        src/dpi/util-byte.h src/dpi/util-byte.h
+        src/utils/util-debug.h src/utils/util-debug.c
+        src/utils/util-error.h src/utils/util-error.c
+        src/utils/util-enum.h src/utils/util-enum.c
+        src/utils/util-atomic.h src/utils/util-atomic.c
+        src/utils/util-random.h src/utils/util-random.c
+        src/utils/util-misc.h src/utils/util-misc.c
+        src/utils/util-byte.h src/utils/util-byte.c
 
-        src/dpi/flow-worker.c src/dpi/decode-events.h
-        src/dpi/flow-queue.h src/dpi/flow-queue.c
+        src/flow/flow-manager.h src/flow/flow-manager.c
+        src/dpi/flow-worker.c src/decode/decode-events.h
+        src/flow/flow-queue.h src/flow/flow-queue.c
         src/dpi/tmqh-packetpool.h src/dpi/tmqh-packetpool.c
-        src/dpi/flow-timeout.h src/dpi/flow-timeout.c
-        src/dpi/flow.h src/dpi/flow.c
-        src/dpi/flow-spare-pool.h src/dpi/flow-spare-pool.c
-        src/dpi/decode.c src/dpi/decode.h
-        src/dpi/decode-thread-var.h src/dpi/decode-thread-var.c
-        src/dpi/app-layer-events.h src/dpi/app-layer-events.c
-        src/dpi/app-layer-parser.h src/dpi/app-layer-parser.c
+        src/flow/flow-timeout.h src/flow/flow-timeout.c
+        src/flow/flow.h src/flow/flow.c
+        src/flow/flow-spare-pool.h src/flow/flow-spare-pool.c
+        src/decode/decode.c src/decode/decode.h
+        src/decode/decode-thread-var.h src/decode/decode-thread-var.c
+        src/app-layer/app-layer-events.h src/app-layer/app-layer-events.c
+        src/app-layer/app-layer-parser.h src/app-layer/app-layer-parser.c
         src/dpi/conf.h src/dpi/conf.c
-        src/dpi/util-pool-thread.h src/dpi/util-pool-thread.c
-        src/dpi/util-pool.h src/dpi/util-pool.c
-        src/dpi/flow-util.h src/dpi/flow-util.c
-        src/dpi/flow-hash.h src/dpi/flow-hash.c
+        src/utils/util-pool-thread.h src/utils/util-pool-thread.c
+        src/utils/util-pool.h src/utils/util-pool.c
+        src/flow/flow-util.h src/flow/flow-util.c
+        src/flow/flow-hash.h src/flow/flow-hash.c
+        src/utils/util-time.h src/utils/util-time.c
         src/dpi/detect.h src/dpi/address-port.h src/dpi/queue.h src/dpi/packet-define.h
-        src/dpi/threadvars.h src/dpi/util-optimize.h src/dpi/threads.h src/dpi/util-hash-lookup3.h src/dpi/util-hash-lookup3.c)
+        src/dpi/threadvars.h src/utils/util-optimize.h src/dpi/threads.h src/utils/util-hash-lookup3.h src/utils/util-hash-lookup3.c src/dpi/tm-threads.h src/dpi/tm-threads.c)
 
 target_link_libraries(net_threat_detect
         pthread

@@ -1,8 +1,8 @@
 #ifndef NET_THREAT_DETECT_FLOW_H
 #define NET_THREAT_DETECT_FLOW_H
 
-#include "threads.h"
 #include "base.h"
+#include "dpi/threads.h"
 
 /* Part of the flow structure, so we declare it here.
  * The actual declaration is in app-layer-parser.c */
@@ -245,11 +245,10 @@ typedef struct AppLayerParserState_ AppLayerParserState;
 #endif
 
 /* Hash key for the flow hash */
-#include "packet-define.h"
-#include "util-var.h"
-#include "decode-thread-var.h"
-#include "app-layer-protos.h"
-#include "util-atomic.h"
+#include "app-layer/app-layer-protos.h"
+#include "decode/decode-thread-var.h"
+#include "dpi/packet-define.h"
+#include "utils/util-atomic.h"
 
 /* global flow config */
 typedef struct FlowCnf_
@@ -436,9 +435,6 @@ typedef struct Flow_
      *  has been set. */
   const struct SigGroupHead_ *sgh_toserver;
 
-  /* pointer to the var list */
-  GenericVar *flowvar;
-
   struct FlowBucket_ *fb;
 
   struct timeval startts;
@@ -529,6 +525,6 @@ int FlowClearMemory(Flow *,uint8_t );
 void FlowHandlePacketUpdate(Flow *f, Packet *p, ThreadVars *tv, DecodeThreadVars *dtv);
 void FlowCleanupAppLayer(Flow *);
 int FlowChangeProto(Flow *);
-
+int FlowGetPacketDirection(const Flow *f, const Packet *p);
 void FlowUpdateState(Flow *f, enum FlowState s);
 #endif //NET_THREAT_DETECT_FLOW_H

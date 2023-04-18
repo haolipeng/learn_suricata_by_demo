@@ -6,7 +6,7 @@
 #define NET_THREAT_DETECT_DPI_MODULE_H
 #include "apis.h"
 #include "dpi_packet.h"
-#include "decode.h"
+#include "decode/decode.h"
 
 typedef struct dpi_snap_ {
     uint32_t tick;

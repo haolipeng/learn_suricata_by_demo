@@ -4,8 +4,8 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "threads.h"
-#include "util-atomic.h"
+#include "dpi/threads.h"
+#include "utils/util-atomic.h"
 
 /** Spinlocks or Mutex for the flow queues. */
 //#define FQLOCK_SPIN

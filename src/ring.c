@@ -15,7 +15,7 @@
 #include "common.h"
 #include "apis.h"
 #include "base.h"
-#include "src/dpi/dpi_entry.h"
+#include "dpi/dpi_entry.h"
 #include "debug.h"
 #include "utils/helper.h"
 

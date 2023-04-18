@@ -1,18 +1,18 @@
 #include "packet-queue.h"
-#include "decode.h"
+#include "decode/decode.h"
 //#include "detect.h"
 //#include "detect-uricontent.h"
+#include "flow/flow.h"
 #include "threads.h"
-#include "flow.h"
 
 #include "stream.h"
 #include "stream-tcp-reassemble.h"
 
 #include "tmqh-packetpool.h"
 
-#include "util-debug.h"
-#include "util-error.h"
-#include "util-optimize.h"
+#include "utils/util-debug.h"
+#include "utils/util-error.h"
+#include "utils/util-optimize.h"
 
 /* Number of freed packet to save for one pool before freeing them. */
 #define MAX_PENDING_RETURN_PACKETS 32

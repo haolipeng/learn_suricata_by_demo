@@ -1,5 +1,5 @@
-#include "detect.h"
-#include "threads.h"
+#include "dpi/detect.h"
+#include "dpi/threads.h"
 #include "util-debug.h"
 #include <stdbool.h>
 #include <sys/time.h>

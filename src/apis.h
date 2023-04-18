@@ -16,11 +16,6 @@ typedef struct io_callback_ {
     int (*debug) (bool print_ts, const char *fmt, va_list args);
 } io_callback_t;
 
-typedef union io_ip_ {
-    struct in6_addr ip6;
-    uint32_t ip4;
-} io_ip_t;
-
 typedef struct io_ctx_ {
     void *dp_ctx;
     uint32_t tick;//important!,必须赋值

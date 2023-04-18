@@ -4,7 +4,7 @@
 #define debug_log_no_filter debug_log
 
 #include "debug.h"
-#include "decode.h"
+#include "decode/decode.h"
 
 #define IF_DEBUG_LOG(level, p) \
         if (unlikely((g_debug_levels & (level)) && debug_log_packet_filter(p)))

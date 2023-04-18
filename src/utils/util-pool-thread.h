@@ -39,8 +39,9 @@
 #ifndef __UTIL_POOL_THREAD_H__
 #define __UTIL_POOL_THREAD_H__
 
-#include "threads.h"
+#include "dpi/threads.h"
 #include "util-pool.h"
+
 struct PoolThreadElement_ {
     SCMutex lock;                   /**< lock, should have low contention */
     Pool *pool;                     /**< actual pool */
@@ -57,8 +58,6 @@ typedef struct PoolThread_ {
 /** per data item reserved data containing the
  *  thread pool id */
 typedef uint16_t PoolThreadReserved;
-
-void PoolThreadRegisterTests(void);
 
 /** \brief initialize a thread pool
  *  \note same as PoolInit() except for "threads"

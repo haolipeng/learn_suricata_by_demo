@@ -147,6 +147,9 @@ void SCLog(int x, const char *file, const char *func, const int line,
 void SCLogErr(int x, const char *file, const char *func, const int line,
               const int err, const char *fmt, ...) ATTR_FMT_PRINTF(6,7);
 
+#define SCLogNotice(...) SCLog(SC_LOG_NOTICE, \
+        __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+
 #define SCLogError(err_code, ...) SCLogErr(SC_LOG_ERROR, \
         __FILE__, __FUNCTION__, __LINE__, \
         err_code, __VA_ARGS__)

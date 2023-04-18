@@ -2,11 +2,11 @@
 // Created by haolipeng on 3/31/23.
 //
 
-#include "common.h"
+#include "decode-tcp.h"
 #include "base.h"
 #include "decode.h"
-#include "decode-tcp.h"
-#include "dpi_module.h"
+#include "dpi/common.h"
+#include "dpi/dpi_module.h"
 
 #define SET_OPTS(dst, src) \
     (dst).type = (src).type; \

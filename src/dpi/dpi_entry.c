@@ -8,7 +8,7 @@
 //user header file
 #include "dpi_module.h"
 #include "dpi_packet.h"
-#include "decode.h"
+#include "decode/decode.h"
 
 dpi_thread_data_t g_dpi_thread_data[MAX_THREADS];
 io_callback_t *g_io_callback;

@@ -1,8 +1,8 @@
 #ifndef __FLOW_HASH_H__
 #define __FLOW_HASH_H__
 
-#include "decode.h"
 #include "flow.h"
+#include "decode/decode.h"
 
 /** Spinlocks or Mutex for the flow buckets. */
 //#define FBLOCK_SPIN

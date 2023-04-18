@@ -23,15 +23,12 @@
  * Flow utility functions
  */
 
-#include "threads.h"
+#include "dpi/threads.h"
 
-#include "flow.h"
 #include "flow-private.h"
 #include "flow-util.h"
-#include "flow-var.h"
-
-#include "util-var.h"
-#include "util-debug.h"
+#include "flow.h"
+#include "utils/util-debug.h"
 
 Flow *FlowAlloc(void)
 {

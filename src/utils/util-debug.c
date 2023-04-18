@@ -7,7 +7,7 @@
 
 #include "util-debug.h"
 #include "dpi/common.h"
-#include "src/utils/helper.h"
+#include "utils/helper.h"
 #include "util-enum.h"
 #include "base.h"
 
@@ -322,6 +322,20 @@ SCError SCLogMessage(const SCLogLevel log_level, const char *file,
         op_iface_ctx = op_iface_ctx->next;
     }
     return SC_OK;
+}
+
+void SCLog(int x, const char *file, const char *func, const int line,
+           const char *fmt, ...)
+{
+  if (sc_log_global_log_level >= x)
+  {
+    char msg[SC_LOG_MAX_LOG_MSG_LEN];
+    va_list ap;
+    va_start(ap, fmt);
+    vsnprintf(msg, sizeof(msg), fmt, ap);
+    va_end(ap);
+    SCLogMessage(x, file, line, func, SC_OK, msg);
+  }
 }
 
 void SCLogErr(int x, const char *file, const char *func, const int line,

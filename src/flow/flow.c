@@ -1,14 +1,14 @@
 #include "flow.h"
-#include "conf.h"
 #include "flow-manager.h"
 #include "flow-private.h"
 #include "flow-spare-pool.h"
 #include "flow-util.h"
-#include "stream-tcp-private.h"
-#include "stream.h"
-#include "util-byte.h"
-#include "util-misc.h"
-#include "util-random.h"
+#include "dpi/conf.h"
+#include "dpi/stream-tcp-private.h"
+#include "dpi/stream.h"
+#include "utils/util-byte.h"
+#include "utils/util-misc.h"
+#include "utils/util-random.h"
 #include <mm_malloc.h>
 #include <sys/time.h>
 

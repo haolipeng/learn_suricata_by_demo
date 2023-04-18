@@ -45,7 +45,6 @@
         (f)->alstate = NULL; \
         (f)->sgh_toserver = NULL; \
         (f)->sgh_toclient = NULL; \
-        (f)->flowvar = NULL; \
         RESET_COUNTERS((f)); \
     } while (0)
 
@@ -85,8 +84,6 @@
         (f)->thread_id[1] = 0; \
         (f)->sgh_toserver = NULL; \
         (f)->sgh_toclient = NULL; \
-        GenericVarFree((f)->flowvar); \
-        (f)->flowvar = NULL; \
         RESET_COUNTERS((f)); \
     } while(0)
 
@@ -94,7 +91,6 @@
         FlowCleanupAppLayer((f)); \
         \
         FLOWLOCK_DESTROY((f)); \
-        GenericVarFree((f)->flowvar); \
     } while(0)
 
 /** \brief check if a memory alloc would fit in the memcap

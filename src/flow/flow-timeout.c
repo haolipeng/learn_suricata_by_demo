@@ -1,27 +1,25 @@
-#include "decode.h"
+#include "decode/decode.h"
 #include <pcap/dlt.h>
 
 #include "flow.h"
 #include "flow-queue.h"
 #include "flow-hash.h"
 #include "flow-util.h"
-#include "flow-var.h"
 #include "flow-private.h"
 #include "flow-manager.h"
 #include "flow-timeout.h"
 
-#include "stream-tcp-private.h"
-#include "stream-tcp-reassemble.h"
-#include "stream-tcp.h"
-
-#include "util-debug.h"
+#include "dpi/stream-tcp-private.h"
+#include "dpi/stream-tcp-reassemble.h"
+#include "dpi/stream-tcp.h"
+#include "utils/util-debug.h"
 
 //#include "detect.h"
 //#include "detect-engine-state.h"
-#include "app-layer-parser.h"
-#include "stream.h"
-#include "tmqh-packetpool.h"
-#include "util-time.h"
+#include "app-layer/app-layer-parser.h"
+#include "dpi/stream.h"
+#include "dpi/tmqh-packetpool.h"
+#include "utils/util-time.h"
 
 //#include "app-layer-parser.h"
 //#include "app-layer.h"

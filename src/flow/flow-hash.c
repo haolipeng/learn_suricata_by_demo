@@ -23,25 +23,25 @@
  *
  *  Flow Hashing functions.
  */
-#include "threads.h"
+#include "dpi/threads.h"
 
-#include "decode.h"
+#include "decode/decode.h"
 
-#include "flow.h"
 #include "flow-hash.h"
-#include "flow-util.h"
-#include "flow-private.h"
 #include "flow-manager.h"
-#include "flow-timeout.h"
+#include "flow-private.h"
 #include "flow-spare-pool.h"
-#include "app-layer-parser.h"
+#include "flow-timeout.h"
+#include "flow-util.h"
+#include "flow.h"
+#include "app-layer/app-layer-parser.h"
 
-#include "util-time.h"
-#include "util-debug.h"
+#include "utils/util-debug.h"
+#include "utils/util-time.h"
 
-#include "conf.h"
-#include "stream-tcp.h"
-#include "util-hash-lookup3.h"
+#include "dpi/conf.h"
+#include "dpi/stream-tcp.h"
+#include "utils/util-hash-lookup3.h"
 
 extern TcpStreamCnf stream_config;
 uint16_t g_vlan_mask = 0xffff;

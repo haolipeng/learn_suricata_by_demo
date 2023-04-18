@@ -1,8 +1,8 @@
 #ifndef NET_THREAT_DETECT_STREAM_TCP_H
 #define NET_THREAT_DETECT_STREAM_TCP_H
 
-#include "decode.h"
 #include "packet-queue.h"
+#include "decode/decode.h"
 #include "stream-tcp-reassemble.h"
 
 #define STREAM_VERBOSE    FALSE

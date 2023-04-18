@@ -1,8 +1,9 @@
 #ifndef NET_THREAT_DETECT_DECODE_TCP_H
 #define NET_THREAT_DETECT_DECODE_TCP_H
 
-#include <stdbool.h>
 #include "base.h"
+#include <netinet/in.h>
+#include <stdbool.h>
 
 #define TCP_HEADER_LEN                       20
 #define TCP_OPTLENMAX                        40

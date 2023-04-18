@@ -11,11 +11,11 @@
 #include <linux/if_ether.h>
 #include <stdbool.h>
 
-#include "base.h"
-#include "utils/helper.h"
-#include "dpi_packet.h"
 #include "apis.h"
-#include "decode.h"
+#include "base.h"
+#include "dpi_packet.h"
+#include "decode/decode.h"
+#include "utils/helper.h"
 
 #define DPI_PKT_FLAG_SACKOK        0x00000001
 #define DPI_PKT_FLAG_TCP_TS        0x00000002

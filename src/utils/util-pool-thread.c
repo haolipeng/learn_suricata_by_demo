@@ -31,8 +31,8 @@
 #include <stdlib.h>
 
 #include "base.h"
-#include "common.h"
-#include "threads.h"
+#include "dpi/common.h"
+#include "dpi/threads.h"
 #include "util-debug.h"
 #include "util-pool-thread.h"
 #include "util-pool.h"

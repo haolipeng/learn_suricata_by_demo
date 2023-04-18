@@ -1,10 +1,13 @@
 #ifndef NET_THREAT_DETECT_UTIL_BYTE_H
 #define NET_THREAT_DETECT_UTIL_BYTE_H
 
-#include "util-debug.h"
-#include "util-error.h"
+#include <errno.h>
+#include <stdbool.h>
 #include <stdlib.h>
 #include <string.h>
+
+#include "util-debug.h"
+#include "util-error.h"
 
 int ByteExtractString(uint64_t *res, int base, uint16_t len, const char *str, bool strict)
 {
@@ -70,8 +73,7 @@ int StringParseUint32(uint32_t *res, int base, uint16_t len, const char *str)
   *res = (uint32_t)i64;
 
   if ((uint64_t)(*res) != i64) {
-    SCLogError(SC_ERR_NUMERIC_VALUE_ERANGE, "Numeric value out of range "
-                                            "(%" PRIu64 " > %" PRIuMAX ")", i64, (uintmax_t)UINT_MAX);
+    SCLogError(SC_ERR_NUMERIC_VALUE_ERANGE, "Numeric value out of range ");
     return -1;
   }
 

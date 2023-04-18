@@ -6,13 +6,20 @@
 #include <stdbool.h>
 
 #include "packet-queue.h"
-#include "util-atomic.h"
+#include "utils/util-atomic.h"
+
+#define THV_USE                 BIT_U32(0)  /** thread is in use */
+#define THV_INIT_DONE           BIT_U32(1)  /** thread initialization done */
+#define THV_PAUSE               BIT_U32(2)  /** signal thread to pause itself */
+#define THV_PAUSED              BIT_U32(3)  /** the thread is paused atm */
+#define THV_KILL                BIT_U32(4)  /** thread has been asked to cleanup and exit */
+#define THV_FAILED              BIT_U32(5)  /** thread has encountered an error and failed */
+#define THV_CLOSED              BIT_U32(6)  /** thread done, should be joinable */
+#define THV_DEINIT              BIT_U32(7)
+#define THV_RUNNING_DONE        BIT_U32(8)
 
 typedef struct ThreadVars_ {
   pthread_t t;
-  /** function pointer to the function that runs the packet pipeline for
-     *  this thread. It is passed directly to pthread_create(), hence the
-     *  void pointers in and out. */
   void *(*tm_func)(void *);
 
   char name[16];
@@ -68,6 +75,6 @@ typedef struct ThreadVars_ {
   struct FlowQueue_ *flow_queue;
   bool break_loop;
 
-} ThreadVars;
+}ThreadVars;
 
 #endif // NET_THREAT_DETECT_THREADVARS_H

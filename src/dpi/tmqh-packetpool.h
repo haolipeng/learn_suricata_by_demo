@@ -1,9 +1,9 @@
 #ifndef __TMQH_PACKETPOOL_H__
 #define __TMQH_PACKETPOOL_H__
 
-#include "decode.h"
+#include "decode/decode.h"
+#include "utils/util-atomic.h"
 #include "threads.h"
-#include "util-atomic.h"
 
 /* Return stack, onto which other threads free packets. */
 typedef struct PktPoolLockedStack_{

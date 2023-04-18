@@ -3,23 +3,22 @@
 //
 
 #include <pthread.h>
-#include <sys/epoll.h>
 #include <unistd.h>
 #include <strings.h>
 #include <string.h>
 #include <stdlib.h>
 #include <sys/time.h>
 
-#include "common.h"
-#include "base.h"
-
-#include "packet.h"
-#include "ring.h"
-#include "pcap.h"
-#include "debug.h"
 #include "apis.h"
+#include "base.h"
+#include "debug.h"
 #include "dpi/dpi_entry.h"
-#include "src/dpi/util-debug.h"
+#include "packet.h"
+#include "pcap.h"
+#include "utils/util-debug.h"
+
+#define DEFAULT_MAX_PENDING_PACKETS 1024
+intmax_t max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
 
 extern uint32_t g_debug_levels;
 io_callback_t g_callback;
@@ -149,7 +148,7 @@ int main(int argc, char *argv[])
     }
 
     //开启flowManager线程
-
+    //TODO:not finished haolipeng
 
     return ret;
 }

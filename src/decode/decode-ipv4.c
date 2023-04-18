@@ -31,11 +31,10 @@
  * Decode IPv4
  */
 
-#include "common.h"
-#include "decode.h"
 #include "decode-ipv4.h"
-#include "dpi_module.h"
-
+#include "decode.h"
+#include "dpi/common.h"
+#include "dpi/dpi_module.h"
 
 /* Generic validation
  *
