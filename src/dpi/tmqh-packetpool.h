@@ -29,11 +29,6 @@ typedef struct PktPool_ {
     Packet *pending_tail;
     uint32_t pending_count;
 
-#ifdef DEBUG_VALIDATION
-    int initialized;
-    int destroyed;
-#endif /* DEBUG_VALIDATION */
-
     /* All members above this point are accessed locally by only one thread, so
      * these should live on their own cache line.
      */

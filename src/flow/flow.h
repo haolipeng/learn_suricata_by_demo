@@ -492,12 +492,8 @@ static inline void FlowDecrUsecnt(Flow *f)
 static inline void FlowReference(Flow **d, Flow *f)
 {
     if (likely(f != NULL)) {
-#ifdef DEBUG_VALIDATION
-        BUG_ON(*d == f);
-#else
         if (*d == f)
             return;
-#endif
         FlowIncrUsecnt(f);
         *d = f;
     }
