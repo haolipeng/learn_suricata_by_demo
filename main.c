@@ -2,7 +2,6 @@
 // Created by haolipeng on 12/28/22.
 //
 
-#include <pthread.h>
 #include <unistd.h>
 #include <strings.h>
 #include <string.h>
@@ -12,16 +11,12 @@
 
 #include "apis.h"
 #include "base.h"
-#include "dpi/dpi_entry.h"
 #include "packet.h"
 #include "pcap.h"
 #include "utils/util-debug.h"
 
 #define DEFAULT_MAX_PENDING_PACKETS 1024
 intmax_t max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
-
-io_callback_t g_callback;
-io_config_t g_config;
 
 ////////////////////////////全局变量区//////////////////////////////
 char *g_pcap_path = NULL;
@@ -30,7 +25,6 @@ char* g_virtual_iface;
 int g_threads = 1; //one capture thread per nic = 1
 
 __thread int THREAD_ID;
-__thread char THREAD_NAME[32];
 
 struct timeval g_now;
 
@@ -61,14 +55,12 @@ void parse_cmd_line(int argc, char *argv[]){
                 break;
             case 'i':
                 g_in_iface = strdup(optarg);//设置网口
-                g_config.promisc = true;
                 break;
             case 'c':
                 g_virtual_iface = strdup(optarg);//TODO:抓取虚拟接口
                 break;
             case 'p':
                 g_pcap_path = optarg;
-                g_config.promisc = true;
                 break;
             case 'h':
             default:
@@ -80,9 +72,6 @@ void parse_cmd_line(int argc, char *argv[]){
 
 int main(int argc, char *argv[])
 {
-    //0.初始化g_config全局变量
-    memset(&g_config, 0, sizeof(g_config));
-
     //1.解析程序命令行参数
     parse_cmd_line(argc, argv);
 

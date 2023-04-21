@@ -27,21 +27,21 @@ add_executable(net_threat_detect
         src/dpi/dpi_module.h
         src/dpi/dpi_entry.c src/dpi/dpi_entry.h
         src/dpi/dpi_packet.c src/dpi/dpi_packet.h
-        src/dpi/tree.h
+        src/reassemble/tree.h
 
         src/utils/helper.h
         src/utils/bits.h
         src/dpi/common.h
-        src/dpi/stream.h
+        src/reassemble/stream.h
 
         src/utils/timer_queue.c src/utils/timer_queue.h
-        src/dpi/stream-tcp.h src/dpi/stream-tcp.c src/dpi/stream-tcp-private.h
-        src/dpi/stream-tcp-list.c
+        src/reassemble/stream-tcp.h src/reassemble/stream-tcp.c src/reassemble/stream-tcp-private.h
+        src/reassemble/stream-tcp-list.c
 
-        src/dpi/streaming-buffer.h src/dpi/streaming-buffer.c
-        src/dpi/stream-tcp-reassemble.h src/dpi/stream-tcp-reassemble.c
-        src/dpi/stream-tcp-inline.c src/dpi/stream-tcp-inline.h
-        src/dpi/stream-tcp-sack.h src/dpi/stream-tcp-sack.c
+        src/reassemble/streaming-buffer.h src/reassemble/streaming-buffer.c
+        src/reassemble/stream-tcp-reassemble.h src/reassemble/stream-tcp-reassemble.c
+        src/reassemble/stream-tcp-inline.c src/reassemble/stream-tcp-inline.h
+        src/reassemble/stream-tcp-sack.h src/reassemble/stream-tcp-sack.c
 
         src/decode/decode-ethernet.h src/decode/decode-ethernet.c
         src/decode/decode-ipv4.h src/decode/decode-ipv4.c src/decode/decode-ipv6.h
@@ -58,7 +58,7 @@ add_executable(net_threat_detect
         src/utils/util-byte.h src/utils/util-byte.c
 
         src/flow/flow-manager.h src/flow/flow-manager.c
-        src/dpi/flow-worker.c src/decode/decode-events.h
+        src/flow/flow-worker.c src/decode/decode-events.h
         src/flow/flow-queue.h src/flow/flow-queue.c
         src/dpi/tmqh-packetpool.h src/dpi/tmqh-packetpool.c
         src/flow/flow-timeout.h src/flow/flow-timeout.c
@@ -68,7 +68,7 @@ add_executable(net_threat_detect
         src/decode/decode-thread-var.h src/decode/decode-thread-var.c
         src/app-layer/app-layer-events.h src/app-layer/app-layer-events.c
         src/app-layer/app-layer-parser.h src/app-layer/app-layer-parser.c
-        src/dpi/conf.h src/dpi/conf.c
+        src/utils/conf.h src/utils/conf.c
         src/utils/util-pool-thread.h src/utils/util-pool-thread.c
         src/utils/util-pool.h src/utils/util-pool.c
         src/flow/flow-util.h src/flow/flow-util.c

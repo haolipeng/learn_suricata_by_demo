@@ -34,18 +34,6 @@ static inline uint64_t htonll(uint64_t value)
 #endif
 }
 
-static inline uint32_t sdbm_hash(register const uint8_t *a, register int len)
-{
-  register uint32_t hash = 0;
-
-  while (len > 0) {
-    hash = *a + (hash << 6) + (hash << 16) - hash;
-    a ++; len --;
-  }
-
-  return hash;
-}
-
 static inline void mac_cpy(uint8_t *m1, uint8_t *m2)
 {
     *(uint32_t *)m1 = *(uint32_t *)m2;

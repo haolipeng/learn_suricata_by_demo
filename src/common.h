@@ -1,7 +1,3 @@
-//
-// Created by haolipeng on 12/29/22.
-//
-
 #ifndef NET_THREAT_DETECT_COMMON_H
 #define NET_THREAT_DETECT_COMMON_H
 #include <stdbool.h>

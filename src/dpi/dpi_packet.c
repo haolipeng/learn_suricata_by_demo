@@ -1,18 +1,5 @@
-//
-// Created by haolipeng on 2/6/23.
-//
-
-#include <arpa/inet.h>
-#include <netinet/if_ether.h>
-#include <netinet/ip.h>
-#include <netinet/ip6.h>
-#include <netinet/tcp.h>
 #include <netinet/udp.h>
-#include <netinet/ip_icmp.h>
-#include <netinet/icmp6.h>
-
 #include "dpi_packet.h"
-#include "dpi_module.h"
 #include "utils/bits.h"
 
 #define LOG_BAD_PKT(p, format, args...) \

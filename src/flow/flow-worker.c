@@ -1,11 +1,11 @@
-#include "detect.h"
-#include "packet-queue.h"
+#include "dpi/detect.h"
+#include "dpi/packet-queue.h"
 #include "flow/flow-spare-pool.h"
 #include "flow/flow-timeout.h"
 #include "flow/flow-util.h"
-#include "stream-tcp.h"
-#include "stream.h"
-#include "tmqh-packetpool.h"
+#include "reassemble/stream-tcp.h"
+#include "reassemble/stream.h"
+#include "dpi/tmqh-packetpool.h"
 #include <stdint.h>
 
 // TODO:modify by haolipeng
@@ -162,8 +162,6 @@ static inline TmEcode FlowUpdate(ThreadVars *tv, FlowWorkerThreadData *fw, Packe
     int state = p->flow->flow_state;
     switch (state) {
         case FLOW_STATE_LOCAL_BYPASSED: {
-            //StatsAddUI64(tv, fw->local_bypass_pkts, 1);
-            //StatsAddUI64(tv, fw->local_bypass_bytes, GET_PKT_LEN(p));
             Flow *f = p->flow;
             FlowDeReference(&p->flow);
             FLOWLOCK_UNLOCK(f);
@@ -265,19 +263,6 @@ static TmEcode FlowWorkerThreadDeinit(ThreadVars *tv, void *data)
 //TmEcode Detect(ThreadVars *tv, Packet *p, void *data);
 TmEcode StreamTcp (ThreadVars *,Packet *, void *, PacketQueueNoLock *pq);
 
-static inline void UpdateCounters(ThreadVars *tv,
-                                  FlowWorkerThreadData *fw, const FlowTimeoutCounters *counters)
-{
-    if (counters->flows_aside_needs_work) {
-        //StatsAddUI64(tv, fw->cnt.flows_aside_needs_work,
-        //             (uint64_t)counters->flows_aside_needs_work);
-    }
-    if (counters->flows_aside_pkt_inject) {
-        //StatsAddUI64(tv, fw->cnt.flows_aside_pkt_inject,
-        //             (uint64_t)counters->flows_aside_pkt_inject);
-    }
-}
-
 static void FlowPruneFiles(Packet *p)
 {
     if (p->flow && p->flow->alstate) {
@@ -375,11 +360,8 @@ static inline void FlowWorkerProcessInjectedFlows(ThreadVars *tv,FlowWorkerThrea
     if (SC_ATOMIC_GET(tv->flow_queue->non_empty) == true)
         injected = FlowQueueExtractPrivate(tv->flow_queue);
     if (injected.len > 0) {
-        //StatsAddUI64(tv, fw->cnt.flows_injected, (uint64_t)injected.len);
-
         FlowTimeoutCounters counters = { 0, 0, };
         CheckWorkQueue(tv, fw, detect_thread, &counters, &injected);
-        UpdateCounters(tv, fw, &counters);
     }
 }
 
@@ -394,7 +376,6 @@ static inline void FlowWorkerProcessLocalFlows(ThreadVars *tv,
 
         FlowTimeoutCounters counters = { 0, 0, };
         CheckWorkQueue(tv, fw, detect_thread, &counters, &fw->fls.work_queue);
-        UpdateCounters(tv, fw, &counters);
     }
 }
 

@@ -1,20 +1,12 @@
-//
-// Created by haolipeng on 1/11/23.
 #ifndef NET_THREAT_DETECT_APIS_H
 #define NET_THREAT_DETECT_APIS_H
+
 #include <stdint.h>
 #include <stdbool.h>
 #include <stdarg.h>
 #include <netinet/in.h>
 #include <net/ethernet.h>
 #include "urcu/rculfhash.h"
-
-typedef struct io_mac_ {
-} io_mac_t;
-
-typedef struct io_callback_ {
-    int (*debug) (bool print_ts, const char *fmt, va_list args);
-} io_callback_t;
 
 typedef struct io_ctx_ {
     void *dp_ctx;
@@ -23,13 +15,6 @@ typedef struct io_ctx_ {
     bool large_frame;
     bool tap;
 }io_ctx_t;
-
-typedef struct dpi_config_ {
-    bool enable_cksum;
-    bool promisc;
-
-    io_mac_t dummy_mac;
-} io_config_t;
 
 typedef struct io_counter_ {
     //ip,tcp,udp,icmp字段

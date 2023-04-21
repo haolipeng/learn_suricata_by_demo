@@ -1,7 +1,3 @@
-//
-// Created by haolipeng on 2/6/23.
-//
-
 #ifndef NET_THREAT_DETECT_DPI_MODULE_H
 #define NET_THREAT_DETECT_DPI_MODULE_H
 #include "apis.h"
@@ -21,7 +17,6 @@ typedef struct dpi_thread_data_ {
 } dpi_thread_data_t;
 
 extern dpi_thread_data_t g_dpi_thread_data[];
-extern io_callback_t *g_io_callback;
 
 #define per_core_packet           (g_dpi_thread_data[THREAD_ID].packet)
 #define per_core_snap             (g_dpi_thread_data[THREAD_ID].snap)

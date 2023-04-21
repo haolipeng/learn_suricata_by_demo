@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 #include "streaming-buffer.h"
-#include "common.h"
+#include "dpi/common.h"
 
 #define STREAMTCP_QUEUE_FLAG_TS     0x01
 #define STREAMTCP_QUEUE_FLAG_WS     0x02

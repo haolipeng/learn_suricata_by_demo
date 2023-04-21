@@ -1,7 +1,3 @@
-//
-// Created by haolipeng on 3/30/23.
-//
-
 #ifndef NET_THREAT_DETECT_PACKET_QUEUE_H
 #define NET_THREAT_DETECT_PACKET_QUEUE_H
 #include "decode/decode.h"

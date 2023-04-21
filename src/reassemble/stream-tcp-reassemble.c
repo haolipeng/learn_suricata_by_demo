@@ -3,7 +3,7 @@
 //
 
 #include "stream-tcp-reassemble.h"
-#include "packet-queue.h"
+#include "dpi/packet-queue.h"
 #include "decode/decode.h"
 #include "utils/util-debug.h"
 #include "utils/util-pool-thread.h"

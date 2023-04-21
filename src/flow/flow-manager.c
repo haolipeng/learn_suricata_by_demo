@@ -1,5 +1,5 @@
 #include "decode/decode.h"
-#include "dpi/conf.h"
+#include "utils/conf.h"
 #include "dpi/threadvars.h"
 #include <asm-generic/errno.h>
 #include <stdio.h>
@@ -17,12 +17,12 @@
 #include "flow-manager.h"
 #include "flow-spare-pool.h"
 
-#include "dpi/stream-tcp-private.h"
-#include "dpi/stream-tcp-reassemble.h"
-#include "dpi/stream-tcp.h"
+#include "reassemble/stream-tcp-private.h"
+#include "reassemble/stream-tcp-reassemble.h"
+#include "reassemble/stream-tcp.h"
 
 #include "dpi/detect.h"
-#include "dpi/stream.h"
+#include "reassemble/stream.h"
 #include "dpi/threads.h"
 #include "utils/util-byte.h"
 #include "utils/util-debug.h"

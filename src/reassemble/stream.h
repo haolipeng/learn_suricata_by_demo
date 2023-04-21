@@ -1,7 +1,3 @@
-//
-// Created by haolipeng on 3/30/23.
-//
-
 #ifndef __STREAM_H__
 #define __STREAM_H__
 

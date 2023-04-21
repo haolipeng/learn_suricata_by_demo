@@ -5,8 +5,8 @@
 #include "flow/flow.h"
 #include "threads.h"
 
-#include "stream.h"
-#include "stream-tcp-reassemble.h"
+#include "reassemble/stream.h"
+#include "reassemble/stream-tcp-reassemble.h"
 
 #include "tmqh-packetpool.h"
 

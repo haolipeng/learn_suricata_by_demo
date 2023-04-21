@@ -9,15 +9,15 @@
 #include "flow-manager.h"
 #include "flow-timeout.h"
 
-#include "dpi/stream-tcp-private.h"
-#include "dpi/stream-tcp-reassemble.h"
-#include "dpi/stream-tcp.h"
+#include "reassemble/stream-tcp-private.h"
+#include "reassemble/stream-tcp-reassemble.h"
+#include "reassemble/stream-tcp.h"
 #include "utils/util-debug.h"
 
 //#include "detect.h"
 //#include "detect-engine-state.h"
 #include "app-layer/app-layer-parser.h"
-#include "dpi/stream.h"
+#include "reassemble/stream.h"
 #include "dpi/tmqh-packetpool.h"
 #include "utils/util-time.h"
 

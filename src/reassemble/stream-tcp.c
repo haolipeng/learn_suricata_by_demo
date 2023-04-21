@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "packet-queue.h"
+#include "dpi/packet-queue.h"
 #include "decode/decode.h"
 #include "utils/util-debug.h"
 #include "utils/util-pool-thread.h"
@@ -10,7 +10,7 @@
 #include "stream-tcp-reassemble.h"
 #include "stream-tcp-sack.h"
 #include "stream-tcp.h"
-#include "tmqh-packetpool.h"
+#include "dpi/tmqh-packetpool.h"
 
 TcpStreamCnf stream_config;
 SC_ATOMIC_DECLARE(uint64_t, st_memuse);

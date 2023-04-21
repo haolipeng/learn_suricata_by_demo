@@ -1,10 +1,10 @@
 #ifndef NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H
 #define NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H
 
-#include "packet-queue.h"
+#include "dpi/packet-queue.h"
 #include "decode/decode.h"
 #include "stream-tcp-private.h"
-#include "threadvars.h"
+#include "dpi/threadvars.h"
 
 enum
 {

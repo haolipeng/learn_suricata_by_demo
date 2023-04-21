@@ -39,8 +39,8 @@
 #include "utils/util-debug.h"
 #include "utils/util-time.h"
 
-#include "dpi/conf.h"
-#include "dpi/stream-tcp.h"
+#include "utils/conf.h"
+#include "reassemble/stream-tcp.h"
 #include "utils/util-hash-lookup3.h"
 
 extern TcpStreamCnf stream_config;
@@ -394,7 +394,6 @@ static inline Flow *FlowSpareSync(ThreadVars *tv, FlowLookupStruct *fls,
 
       if (spare_sync) {
           if (f != NULL) {
-              //StatsAddUI64(tv, fls->dtv->counter_flow_spare_sync_avg, fls->spare_queue.len+1);
               if (fls->spare_queue.len < 99) {
                   //StatsIncr(tv, fls->dtv->counter_flow_spare_sync_incomplete);
               }
