@@ -11,15 +11,6 @@
 #include "decode/decode.h"
 
 dpi_thread_data_t g_dpi_thread_data[MAX_THREADS];
-io_callback_t *g_io_callback;
-io_config_t *g_io_config;
-
-// Global
-void dpi_setup(io_callback_t *cb, io_config_t *cfg)
-{
-    g_io_callback = cb;//assign to global var
-    g_io_config = cfg;
-}
 
 int dpi_recv_packet(io_ctx_t* ctx,uint8_t* ptr, int len){
     per_core_snap.tick = ctx->tick;

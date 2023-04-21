@@ -28,7 +28,6 @@ add_executable(net_threat_detect
         src/dpi/dpi_module.h
         src/dpi/dpi_entry.c src/dpi/dpi_entry.h
         src/dpi/dpi_packet.c src/dpi/dpi_packet.h
-        src/dpi/dpi_debug.c src/dpi/dpi_debug.h
         src/dpi/tree.h
 
         src/utils/helper.h

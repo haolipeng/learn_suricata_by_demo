@@ -34,41 +34,6 @@ __thread int THREAD_ID;
 __thread char THREAD_NAME[32];
 
 struct timeval g_now;
-pthread_mutex_t g_debug_lock;
-
-
-static inline int debug_ts(FILE *logfp)
-{
-    struct timeval now;
-    struct tm *tm;
-
-    if (g_now.tv_sec == 0) {
-        gettimeofday(&now, NULL);
-        //time_t t = get_current_time();//modify by haolipeng,time value maybe incorrect.
-        tm = localtime((const time_t *) &now.tv_sec);
-    } else {
-        now = g_now;
-        tm = localtime(&now.tv_sec);
-    }
-
-    return fprintf(logfp, "%04d-%02d-%02dT%02d:%02d:%02d|DEBU|%s|",
-                   tm->tm_year + 1900, tm->tm_mon + 1, tm->tm_mday,
-                   tm->tm_hour, tm->tm_min, tm->tm_sec, THREAD_NAME);
-}
-
-int debug_stdout(bool print_ts, const char *fmt, va_list args)
-{
-    int len = 0;
-
-    pthread_mutex_lock(&g_debug_lock);
-    if (print_ts) {
-        len = debug_ts(stdout);
-    }
-    len += vprintf(fmt, args);
-    pthread_mutex_unlock(&g_debug_lock);
-
-    return len;
-}
 
 static void help(const char *prog)
 {
@@ -128,10 +93,6 @@ int main(int argc, char *argv[])
 
     //2.初始化日志系统
     SCLogInitLogModule(NULL);
-
-    pthread_mutex_init(&g_debug_lock, NULL);
-    g_callback.debug = debug_stdout;//设置debug回调的接口
-    dpi_setup(&g_callback,&g_config);
 
     int ret = 0;
     //判断不同运行模式
