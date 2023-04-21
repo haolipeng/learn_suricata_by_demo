@@ -16,8 +16,8 @@
 #include "apis.h"
 #include "base.h"
 #include "dpi/dpi_entry.h"
-#include "debug.h"
 #include "utils/helper.h"
+#include "utils/util-debug.h"
 
 #define ERR_UNSUPPORT_v3 (-255)
 #define MAX_TSO_SIZE 65536
@@ -64,7 +64,7 @@ int af_packet_rx_v1(packet_context_t *ctx, uint32_t tick)
             if (tp->tp_status & TP_STATUS_COPY) {
                 if (tp->tp_len <= MAX_TSO_SIZE) {
                     size_t len = recv(ctx->fd, g_tso_packet, MAX_TSO_SIZE, 0);
-                    DEBUG_PACKET("Recv large frame: len=%u from %s\n", len, ctx->name);
+                    SCLogDebug("Recv large frame: len=%u from %s\n", len, ctx->name);
 
                     context.large_frame = true;
                     //处理接收的数据包
@@ -72,10 +72,10 @@ int af_packet_rx_v1(packet_context_t *ctx, uint32_t tick)
                 } else {
                     // read to consume
                     recv(ctx->fd, g_tso_packet, 1, 0);
-                    DEBUG_PACKET("Discard: len=%u snap=%u from %s\n",tp->tp_len, tp->tp_snaplen, ctx->name);
+                    SCLogDebug("Discard: len=%u snap=%u from %s\n",tp->tp_len, tp->tp_snaplen, ctx->name);
                 }
             } else {
-                DEBUG_PACKET("Discard: len=%u snap=%u from %s\n",tp->tp_len, tp->tp_snaplen, ctx->name);
+                SCLogDebug("Discard: len=%u snap=%u from %s\n",tp->tp_len, tp->tp_snaplen, ctx->name);
             }
         } else {
             context.large_frame = false;
@@ -157,7 +157,7 @@ static int dp_ring_v1(int fd, const char *iface, dp_ring_t *ring, bool tap, bool
 
     ring->rx_map = mmap(NULL, ring->map_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED,fd, 0);
     if (ring->rx_map == MAP_FAILED) {
-        DEBUG_ERROR(DBG_CTRL, "fail to mmap (size=0x%x).\n", ring->map_size);
+        SCLogError(SC_ERR_CAPTURE_PACKET,"fail to mmap (size=0x%x).\n", ring->map_size);
         close(fd);
         return -1;
     }
@@ -188,7 +188,7 @@ static int af_packet_rx_v3(packet_context_t *ctx, uint32_t tick)
         }
 
         if (unlikely(desc->hdr.bh1.block_status & TP_STATUS_COPY)) {
-            DEBUG_PACKET("Discard: status=0x%x len=%u from %s\n",
+            SCLogError(SC_ERR_CAPTURE_PACKET,"Discard: status=0x%x len=%u from %s\n",
                          desc->hdr.bh1.block_status, desc->hdr.bh1.blk_len, ctx->name);
         } else {
             uint8_t *ptr = (uint8_t *)desc + desc->hdr.bh1.offset_to_first_pkt;
@@ -232,7 +232,7 @@ static int dp_ring_v3(int fd, const char *iface, dp_ring_t *ring, bool tap, uint
     int val = TPACKET_V3;
     //packet版本信息
     if (setsockopt(fd, SOL_PACKET, PACKET_VERSION, &val, sizeof(val))) {
-        DEBUG_ERROR(DBG_CTRL, "fail to set TPACKET_V3.\n");
+        SCLogError(SC_ERR_CAPTURE_PACKET, "fail to set TPACKET_V3.\n");
         return ERR_UNSUPPORT_v3;
     }
 
@@ -258,7 +258,7 @@ static int dp_ring_v3(int fd, const char *iface, dp_ring_t *ring, bool tap, uint
 
     ring->rx_map = mmap(NULL, ring->map_size, PROT_READ | PROT_WRITE, MAP_SHARED | MAP_LOCKED,fd, 0);
     if (ring->rx_map == MAP_FAILED) {
-        DEBUG_ERROR(DBG_CTRL, "fail to mmap (size=0x%x).\n", ring->map_size);
+        SCLogError(SC_ERR_CAPTURE_PACKET, "fail to mmap (size=0x%x).\n", ring->map_size);
         close(fd);
         return -1;
     }
@@ -277,7 +277,7 @@ int open_socket(packet_context_t *ctx, const char *iface, bool tap, bool jumbofr
 {
     int fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
     if (fd < 0) {
-        DEBUG_ERROR(DBG_CTRL, "fail to open socket.\n");
+        SCLogError(SC_ERR_CAPTURE_PACKET,"fail to open socket.\n");
         return -1;
     }
 
@@ -307,7 +307,7 @@ int net_rx(packet_context_t *ctx, uint32_t tick){
     if(ctx->ring.rx != NULL){
         result = ctx->ring.rx(ctx,tick);
     }else{
-        DEBUG_ERROR(DBG_CTRL, "ctx->ring.rx is NULL.");
+        SCLogError(SC_ERR_CAPTURE_PACKET, "ctx->ring.rx is NULL.");
     }
     return result;
 }

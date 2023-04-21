@@ -7,11 +7,11 @@
 #include <strings.h>
 #include <string.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <sys/time.h>
 
 #include "apis.h"
 #include "base.h"
-#include "debug.h"
 #include "dpi/dpi_entry.h"
 #include "packet.h"
 #include "pcap.h"
@@ -20,7 +20,6 @@
 #define DEFAULT_MAX_PENDING_PACKETS 1024
 intmax_t max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
 
-extern uint32_t g_debug_levels;
 io_callback_t g_callback;
 io_config_t g_config;
 
@@ -57,11 +56,7 @@ void parse_cmd_line(int argc, char *argv[]){
             case 'd':
                 //设置debug等级 info,warning,error
                 if (strcasecmp(optarg, "none") == 0) {
-                    g_debug_levels = 0;
-                } else if (optarg[0] == '-') {
-                    g_debug_levels &= ~debug_name2level(optarg + 1);
-                } else {
-                    g_debug_levels |= debug_name2level(optarg);
+                    //TODO:
                 }
                 break;
             case 'i':

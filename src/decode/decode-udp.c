@@ -44,7 +44,7 @@ int DecodeUDP(Packet *p,const uint8_t *pkt, uint16_t len)
     }
 
     //TODO:comment by haolipeng
-    //FlowSetupPacket(p);
+    FlowSetupPacket(p);
 
     return TM_ECODE_OK;
 }

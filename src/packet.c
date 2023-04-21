@@ -4,6 +4,7 @@
 #define _GNU_SOURCE
 #define __USE_GNU
 #include <unistd.h>
+#include <stdio.h>
 #include <pthread.h>
 #include <asm-generic/errno.h>
 #include <errno.h>
@@ -20,12 +21,12 @@
 #include "apis.h"
 #include "base.h"
 #include "common.h"
-#include "debug.h"
 #include "dpi/dpi_entry.h"
 #include "packet.h"
 #include "ring.h"
 #include "urcu/rcuhlist.h"
 #include "utils/helper.h"
+#include "utils/util-debug.h"
 
 extern int g_threads;
 bool g_running = false;
@@ -144,16 +145,16 @@ static int enter_netns(const char *netns)
     int curfd, netfd;
 
     if ((curfd = open("/proc/self/ns/net", O_RDONLY)) == -1) {
-        DEBUG_ERROR(DBG_CTRL, "failed to open current network namespace\n");
+        SCLogError(SC_ERR_CAPTURE_PACKET,"failed to open current network namespace\n");
         return -1;
     }
     if ((netfd = open(netns, O_RDONLY)) == -1) {
-        DEBUG_ERROR(DBG_CTRL, "failed to open network namespace: netns=%s\n", netns);
+        SCLogError(SC_ERR_CAPTURE_PACKET,"failed to open network namespace: netns=%s\n", netns);
         close(curfd);
         return -1;
     }
     if (setns(netfd, CLONE_NEWNET) == -1) {
-        DEBUG_ERROR(DBG_CTRL, "failed to enter network namespace: netns=%s error=%s\n", netns, strerror(errno));
+        SCLogError(SC_ERR_CAPTURE_PACKET, "failed to enter network namespace: netns=%s error=%s\n", netns, strerror(errno));
         close(netfd);
         close(curfd);
         return -1;
@@ -165,7 +166,7 @@ static int enter_netns(const char *netns)
 static int restore_netns(int fd)
 {
     if (setns(fd, CLONE_NEWNET) == -1) {
-        DEBUG_ERROR(DBG_CTRL, "failed to restore network namespace: error=%s\n", strerror(errno));
+        SCLogError(SC_ERR_CAPTURE_PACKET, "failed to restore network namespace: error=%s\n", strerror(errno));
         close(fd);
         return -1;
     }
@@ -188,13 +189,13 @@ int acs_data_add_tap(const char *netns, const char *iface, int thr_id)
 
     thr_id = thr_id % MAX_THREADS;
     if(NULL == iface){
-        DEBUG_ERROR(DBG_CTRL, "iface can't be empty!\n");
+        SCLogError(SC_ERR_CAPTURE_PACKET, "iface can't be empty!\n");
         return -1;
     }
 
     if (per_core_epoll_fd(thr_id) == 0) {
         // TODO: May need to wait a while for dp thread ready
-        DEBUG_ERROR(DBG_CTRL, "epoll is not initiated, netns=%s thr_id=%d\n", netns, thr_id);
+        SCLogError(SC_ERR_CAPTURE_PACKET, "epoll is not initiated, netns=%s thr_id=%d\n", netns, thr_id);
         return -1;
     }
 
@@ -227,7 +228,7 @@ int acs_data_add_tap(const char *netns, const char *iface, int thr_id)
         if (ctx != NULL) {
             // handle mac address change
             ether_aton_r((const char*)ep_mac, &ctx->ep_mac);
-            DEBUG_CTRL("tap already exists, netns=%s iface=%s\n", netns, iface);
+            SCLogError(SC_ERR_CAPTURE_PACKET,"tap already exists, netns=%s iface=%s\n", netns, iface);
             break;
         }
 
@@ -248,7 +249,7 @@ int acs_data_add_tap(const char *netns, const char *iface, int thr_id)
         ether_aton_r((const char*)ep_mac, &ctx->ep_mac);
         strncpy(ctx->name, name, sizeof(ctx->name));
         cds_hlist_add_head_rcu(&ctx->link, &per_core_ctx_list(thr_id));
-        DEBUG_CTRL("tap added netns=%s iface=%s fd=%d\n", netns, iface, ctx->fd);
+        SCLogDebug("tap added netns=%s iface=%s fd=%d\n", netns, iface, ctx->fd);
     } while (false);
 
     pthread_mutex_unlock(&per_core_ctrl_dp_lock(thr_id));
@@ -268,7 +269,7 @@ int acs_data_add_port(const char *iface, bool jumboframe, int thr_id)
     //保证线程相关的epoll环境已初始化
     if (per_core_epoll_fd(thr_id) == 0) {
         //May need to wait a while for dp thread ready
-        DEBUG_ERROR(DBG_CTRL, "epoll is not initiated, iface=%s thr_id=%d\n", iface, thr_id);
+        SCLogError(SC_ERR_CAPTURE_PACKET, "epoll is not initiated, iface=%s thr_id=%d\n", iface, thr_id);
         return -1;
     }
 
@@ -277,7 +278,7 @@ int acs_data_add_port(const char *iface, bool jumboframe, int thr_id)
 
     do {
         if (per_core_ctx_inline(thr_id) != NULL) {
-            DEBUG_CTRL("iface already exists, iface=%s\n", iface);
+            SCLogError(SC_ERR_CAPTURE_PACKET, "iface already exists, iface=%s\n", iface);
             break;
         }
 
@@ -295,7 +296,7 @@ int acs_data_add_port(const char *iface, bool jumboframe, int thr_id)
 
         //将ctx节点加入到链表中
         cds_hlist_add_head_rcu(&ctx->link, &per_core_ctx_list(thr_id));
-        DEBUG_CTRL("added iface=%s fd=%d\n", iface, ctx->fd);
+        SCLogDebug("added iface=%s fd=%d\n", iface, ctx->fd);
     } while (false);
 
     pthread_mutex_unlock(&per_core_ctrl_dp_lock(thr_id));//unlock
@@ -309,7 +310,7 @@ int acs_epoll_add_ctx(packet_context_t *ctx, int thr_id){
     if(epoll_ctl(per_core_epoll_fd(thr_id), EPOLL_CTL_ADD, ctx->fd, &ctx->ee) == -1){
         //If the fd already in the epoll,not return error.
         if(errno != EEXIST){
-            DEBUG_ERROR(DBG_CTRL, "fail to add socket to epoll: {}\n", strerror(errno));
+            SCLogError(SC_ERR_CAPTURE_PACKET, "fail to add socket to epoll: %s\n", strerror(errno));
             return -1;
         }
     }
@@ -334,7 +335,7 @@ int dp_epoll_remove_ctx(packet_context_t *ctx){
 static void acs_remove_context(timer_node_t *node)
 {
     packet_context_t *ctx = STRUCT_OF(node, packet_context_t, free_node);
-    DEBUG_CTRL("ctx=%s\n", ctx->name);
+    SCLogDebug("ctx=%s\n", ctx->name);
     close_socket(ctx);
     free(ctx);
 }
@@ -342,7 +343,7 @@ static void acs_remove_context(timer_node_t *node)
 // Not to release socket memory if 'kill' is false
 static void acs_release_context(packet_context_t *ctx, bool kill)
 {
-    DEBUG_CTRL("ctx=%s fd=%d\n", ctx->name, ctx->fd);
+    SCLogDebug("ctx=%s fd=%d\n", ctx->name, ctx->fd);
 
     cds_hlist_del(&ctx->link);
     dp_epoll_remove_ctx(ctx);
@@ -351,7 +352,7 @@ static void acs_release_context(packet_context_t *ctx, bool kill)
         close_socket(ctx);
         free(ctx);
     } else {
-        DEBUG_CTRL("add context to free list, ctx=%s, ts=%u\n", ctx->name, g_seconds);
+        SCLogDebug("add context to free list, ctx=%s, ts=%u\n", ctx->name, g_seconds);
         //TODO:add context to free list,wait timer trigger(or timeout) to remove some context
         timer_queue_append(&per_core_ctx_free_list(ctx->thr_id), &ctx->free_node, g_seconds);
         ctx->released = 1;
@@ -451,7 +452,7 @@ void* acs_data_thr(void* args){
 
     close(per_core_epoll_fd(thr_id));
     per_core_epoll_fd(thr_id) = 0;
-    DEBUG_INIT("dp thread exits\n");
+    SCLogDebug("dp thread exits\n");
 
     //TODO:need deal something
     return NULL;

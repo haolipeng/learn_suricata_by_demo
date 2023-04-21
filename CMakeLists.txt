@@ -20,7 +20,6 @@ add_executable(net_threat_detect
         src/packet.c src/packet.h
         src/ring.c src/ring.h
         src/pcap.c src/pcap.h
-        src/debug.c src/debug.h
         src/common.h
         src/base.h
         src/apis.h
