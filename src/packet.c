@@ -21,7 +21,6 @@
 #include "apis.h"
 #include "base.h"
 #include "common.h"
-#include "dpi/dpi_entry.h"
 #include "packet.h"
 #include "ring.h"
 #include "urcu/rcuhlist.h"

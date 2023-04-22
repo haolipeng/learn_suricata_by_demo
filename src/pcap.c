@@ -9,7 +9,6 @@
 #include <string.h>
 #include <sys/stat.h>
 #include <sys/types.h>
-#include <unistd.h>
 
 struct timeval g_now;
 static struct timeval tv_diff(struct timeval s, struct timeval e)

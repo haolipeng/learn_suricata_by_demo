@@ -5,11 +5,8 @@
 #include "flow/flow.h"
 #include "threads.h"
 
-#include "reassemble/stream.h"
 #include "reassemble/stream-tcp-reassemble.h"
-
 #include "tmqh-packetpool.h"
-
 #include "utils/util-debug.h"
 #include "utils/util-error.h"
 #include "utils/util-optimize.h"

@@ -17,6 +17,7 @@ typedef struct PacketQueue_ {
     pthread_cond_t cond_q;
 } PacketQueue;
 
+PacketQueue *PacketQueueAlloc(void);
 void PacketEnqueueNoLock(PacketQueueNoLock *qnl, struct Packet_ *p);
 //void PacketEnqueue (PacketQueue *, struct Packet_ *);
 

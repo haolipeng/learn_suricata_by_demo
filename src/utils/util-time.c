@@ -1,4 +1,3 @@
-#include "dpi/detect.h"
 #include "dpi/threads.h"
 #include "util-debug.h"
 #include <stdbool.h>

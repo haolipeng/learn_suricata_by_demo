@@ -1,14 +1,12 @@
-//
-// Created by haolipeng on 1/11/23.
-//
 #include <stddef.h>
-#include <linux/if_ether.h>
 #include <string.h>
 
 //user header file
+#include "decode/decode.h"
 #include "dpi_module.h"
 #include "dpi_packet.h"
-#include "decode/decode.h"
+#include "flow/flow-worker.h"
+#include "tm-threads.h"
 
 dpi_thread_data_t g_dpi_thread_data[MAX_THREADS];
 
@@ -22,5 +20,15 @@ int dpi_recv_packet(io_ctx_t* ctx,uint8_t* ptr, int len){
     DecodeEthernet(&per_core_packet, ptr, len);
 
     //TODO:基于流的分析和统计
+    //create threadvars
+    char tname[TM_THREAD_NAME_MAX];
+    ThreadVars *tv = TmThreadCreatePacketHandler(tname,
+                                                 "packetpool", "packetpool",
+                                                 "packetpool", "packetpool",
+                                                 "pktacqloop");
+
+    void * thread_data = NULL;
+    FlowWorker(tv, &per_core_packet,thread_data);
+
     return 0;
 }

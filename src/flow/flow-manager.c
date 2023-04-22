@@ -2,7 +2,6 @@
 #include "utils/conf.h"
 #include "dpi/threadvars.h"
 #include <asm-generic/errno.h>
-#include <stdio.h>
 #include <unistd.h>
 
 #include "utils/util-random.h"
@@ -11,18 +10,13 @@
 #include "flow.h"
 #include "flow-queue.h"
 #include "flow-hash.h"
-#include "flow-util.h"
 #include "flow-private.h"
 #include "flow-timeout.h"
 #include "flow-manager.h"
 #include "flow-spare-pool.h"
 
 #include "reassemble/stream-tcp-private.h"
-#include "reassemble/stream-tcp-reassemble.h"
-#include "reassemble/stream-tcp.h"
 
-#include "dpi/detect.h"
-#include "reassemble/stream.h"
 #include "dpi/threads.h"
 #include "utils/util-byte.h"
 #include "utils/util-debug.h"
@@ -560,7 +554,7 @@ static uint32_t FlowTimeoutsMin(void)
  *
  *  Keeps an eye on the spare list, alloc flows if needed...
  */
-static TmEcode FlowManager(ThreadVars *th_v, void *thread_data)
+TmEcode FlowManager(ThreadVars *th_v, void *thread_data)
 {
     FlowManagerThreadData *ftd = thread_data;
     struct timeval ts;

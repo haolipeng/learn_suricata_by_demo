@@ -379,7 +379,7 @@ static inline void FlowWorkerProcessLocalFlows(ThreadVars *tv,
     }
 }
 
-static TmEcode FlowWorker(ThreadVars *tv, Packet *p, void *data)
+TmEcode FlowWorker(ThreadVars *tv, Packet *p, void *data)
 {
     FlowWorkerThreadData *fw = data;
     void *detect_thread = SC_ATOMIC_GET(fw->detect_thread);

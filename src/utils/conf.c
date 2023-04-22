@@ -9,7 +9,7 @@
 
 static ConfNode *root = NULL;
 
-static size_t strlcpy(char *dst, const char *src, size_t siz)
+size_t strlcpy(char *dst, const char *src, size_t siz)
 {
   register char *d = dst;
   register const char *s = src;

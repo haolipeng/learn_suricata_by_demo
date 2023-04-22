@@ -86,8 +86,6 @@ enum {
         #error "Cannot mix DBG_THREADS and PROFILE_LOCKING"
     #endif
     #include "threads-debug.h"
-#elif defined PROFILE_LOCKING
-#include "threads-profile.h"
 #else /* normal */
 
 /* mutex */

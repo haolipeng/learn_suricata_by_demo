@@ -1,6 +1,5 @@
 #include "decode-udp.h"
 #include "decode.h"
-#include "dpi/dpi_module.h"
 
 static int DecodeUDPPacket(Packet *p, const uint8_t *pkt, uint16_t len)
 {

@@ -6,6 +6,7 @@
 #include <stdbool.h>
 
 #include "packet-queue.h"
+#include "tm-queues.h"
 #include "utils/util-atomic.h"
 
 #define THV_USE                 BIT_U32(0)  /** thread is in use */
@@ -41,11 +42,22 @@ typedef struct ThreadVars_ {
   uint8_t cap_flags; /**< Flags to indicate the capabilities of all the
                           TmModules resgitered under this thread */
 
+  uint8_t inq_id;
+  uint8_t outq_id;
+
   /** local id */
   int id;
 
+  /** incoming queue and handler */
+  Tmq *inq;
+  struct Packet_ * (*tmqh_in)(struct ThreadVars_ *);
 
   SC_ATOMIC_DECLARE(uint32_t, flags);
+
+  /** outgoing queue and handler */
+  Tmq *outq;
+  void *outctx;
+  void (*tmqh_out)(struct ThreadVars_ *, struct Packet_ *);
 
   /** queue for decoders to temporarily store extra packets they
      *  generate. */
@@ -56,16 +68,8 @@ typedef struct ThreadVars_ {
   //struct PacketQueue_ *stream_pq;
   //struct PacketQueue_ *stream_pq_local;
 
-  /* counters */
-
-  /** private counter store: counter updates modify this */
-  //StatsPrivateThreadContext perf_private_ctx;
-
   /** pointer to the next thread */
   struct ThreadVars_ *next;
-
-  /** public counter store: counter syncs update this */
-  //StatsPublicThreadContext perf_public_ctx;
 
   /* mutex and condition used by management threads */
 

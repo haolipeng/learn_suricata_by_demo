@@ -1,5 +1,3 @@
-#include <sys/types.h>
-#include <string.h>
 #include <stdint.h>
 
 #include "timer_queue.h"

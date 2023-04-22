@@ -58,7 +58,7 @@ add_executable(net_threat_detect
         src/utils/util-byte.h src/utils/util-byte.c
 
         src/flow/flow-manager.h src/flow/flow-manager.c
-        src/flow/flow-worker.c src/decode/decode-events.h
+        src/decode/decode-events.h
         src/flow/flow-queue.h src/flow/flow-queue.c
         src/dpi/tmqh-packetpool.h src/dpi/tmqh-packetpool.c
         src/flow/flow-timeout.h src/flow/flow-timeout.c
@@ -75,7 +75,12 @@ add_executable(net_threat_detect
         src/flow/flow-hash.h src/flow/flow-hash.c
         src/utils/util-time.h src/utils/util-time.c
         src/dpi/detect.h src/dpi/address-port.h src/dpi/queue.h src/dpi/packet-define.h
-        src/dpi/threadvars.h src/utils/util-optimize.h src/dpi/threads.h src/utils/util-hash-lookup3.h src/utils/util-hash-lookup3.c src/dpi/tm-threads.h src/dpi/tm-threads.c)
+        src/dpi/threadvars.h src/utils/util-optimize.h src/dpi/threads.h
+        src/utils/util-hash-lookup3.h src/utils/util-hash-lookup3.c
+        src/dpi/tm-threads.h src/dpi/tm-threads.c
+        src/dpi/tm-queues.h src/dpi/tm-queues.c
+        src/dpi/tm-queuehandlers.h src/dpi/tm-queuehandlers.c
+        src/flow/flow-worker.h src/flow/flow-worker.c)
 
 target_link_libraries(net_threat_detect
         pthread

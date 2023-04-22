@@ -31,7 +31,6 @@
 #include "flow-manager.h"
 #include "flow-private.h"
 #include "flow-spare-pool.h"
-#include "flow-timeout.h"
 #include "flow-util.h"
 #include "flow.h"
 #include "app-layer/app-layer-parser.h"
@@ -39,7 +38,6 @@
 #include "utils/util-debug.h"
 #include "utils/util-time.h"
 
-#include "utils/conf.h"
 #include "reassemble/stream-tcp.h"
 #include "utils/util-hash-lookup3.h"
 

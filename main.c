@@ -9,8 +9,8 @@
 #include <stdio.h>
 #include <sys/time.h>
 
-#include "apis.h"
 #include "base.h"
+#include "flow/flow-manager.h"
 #include "packet.h"
 #include "pcap.h"
 #include "utils/util-debug.h"
@@ -93,7 +93,10 @@ int main(int argc, char *argv[])
     }
 
     //开启flowManager线程
-    //TODO:not finished haolipeng
+    FlowManagerThreadSpawn();
+
+    //开启flowRecycler线程
+    FlowRecyclerThreadSpawn();
 
     return ret;
 }

@@ -27,4 +27,5 @@ int ConfGetInt(const char *name, intmax_t *val);
 ConfNode *ConfNodeLookupChild(const ConfNode *node, const char *key);
 const char *ConfNodeLookupChildValue(const ConfNode *node, const char *key);
 
+size_t strlcpy(char *dst, const char *src, size_t siz);
 #endif // NET_THREAT_DETECT_CONF_H

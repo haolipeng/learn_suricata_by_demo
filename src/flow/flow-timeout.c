@@ -4,13 +4,10 @@
 #include "flow.h"
 #include "flow-queue.h"
 #include "flow-hash.h"
-#include "flow-util.h"
 #include "flow-private.h"
-#include "flow-manager.h"
 #include "flow-timeout.h"
 
 #include "reassemble/stream-tcp-private.h"
-#include "reassemble/stream-tcp-reassemble.h"
 #include "reassemble/stream-tcp.h"
 #include "utils/util-debug.h"
 

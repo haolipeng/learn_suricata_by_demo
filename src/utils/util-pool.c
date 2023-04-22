@@ -44,7 +44,6 @@
 
 #include "base.h"
 #include "util-debug.h"
-#include "util-pool-thread.h"
 #include "util-pool.h"
 
 static int PoolMemset(void *pitem, void *initdata)
