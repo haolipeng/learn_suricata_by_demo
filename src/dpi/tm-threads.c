@@ -216,11 +216,12 @@ static void *TmThreadsSlotPktAcqLoop(void *td)
     TmThreadsSetFlag(tv, THV_INIT_DONE);
 
     while(run) {
-        if (TmThreadsCheckFlag(tv, THV_PAUSE)) {
+        //TODO:modify by haolipeng
+        /*if (TmThreadsCheckFlag(tv, THV_PAUSE)) {
             TmThreadsSetFlag(tv, THV_PAUSED);
             TmThreadTestThreadUnPaused(tv);
             TmThreadsUnsetFlag(tv, THV_PAUSED);
-        }
+        }*/
 
         r = s->PktAcqLoop(tv, SC_ATOMIC_GET(s->slot_data), s);
 

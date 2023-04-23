@@ -54,12 +54,6 @@ static int RunModeSetLiveCaptureWorkersForDevice(const char *recv_mod_name,
         }
         TmSlotSetFuncAppend(tv, tm_module, NULL);
 
-        tm_module = TmModuleGetByName("RespondReject");
-        if (tm_module == NULL) {
-            FatalError(SC_ERR_RUNMODE, "TmModuleGetByName RespondReject failed");
-        }
-        TmSlotSetFuncAppend(tv, tm_module, NULL);
-
         if (TmThreadSpawn(tv) != TM_ECODE_OK) {
             FatalError(SC_ERR_THREAD_SPAWN, "TmThreadSpawn failed");
         }
