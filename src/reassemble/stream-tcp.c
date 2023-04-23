@@ -3,14 +3,13 @@
 #include <stdio.h>
 
 #include "dpi/packet-queue.h"
-#include "decode/decode.h"
-#include "utils/util-debug.h"
 #include "utils/util-pool-thread.h"
 #include "stream-tcp-private.h"
 #include "stream-tcp-reassemble.h"
 #include "stream-tcp-sack.h"
 #include "stream-tcp.h"
 #include "dpi/tmqh-packetpool.h"
+#include "dpi/tm-threads-common.h"
 
 TcpStreamCnf stream_config;
 SC_ATOMIC_DECLARE(uint64_t, st_memuse);

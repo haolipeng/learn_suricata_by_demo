@@ -24,6 +24,8 @@
 #include "app-layer/app-layer-parser.h"
 #include "dpi/tm-threads.h"
 #include "dpi/tmqh-packetpool.h"
+#include "dpi/tm-threads-common.h"
+#include "dpi/tm-modules.h"
 
 /** queue to pass flows to cleanup/log thread(s) */
 FlowQueue flow_recycle_q;
@@ -976,4 +978,30 @@ again:
     /* reset count, so we can kill and respawn (unix socket) */
     SC_ATOMIC_SET(flowrec_cnt, 0);
     return;
+}
+
+void TmModuleFlowManagerRegister (void)
+{
+    tmm_modules[TMM_FLOWMANAGER].name = "FlowManager";
+    tmm_modules[TMM_FLOWMANAGER].ThreadInit = FlowManagerThreadInit;
+    tmm_modules[TMM_FLOWMANAGER].ThreadDeinit = FlowManagerThreadDeinit;
+    tmm_modules[TMM_FLOWMANAGER].Management = FlowManager;
+    tmm_modules[TMM_FLOWMANAGER].flags = TM_FLAG_MANAGEMENT_TM;
+    SCLogDebug("%s registered", tmm_modules[TMM_FLOWMANAGER].name);
+
+    SC_ATOMIC_INIT(flowmgr_cnt);
+    SC_ATOMIC_INITPTR(flow_timeouts);
+}
+
+void TmModuleFlowRecyclerRegister (void)
+{
+    tmm_modules[TMM_FLOWRECYCLER].name = "FlowRecycler";
+    tmm_modules[TMM_FLOWRECYCLER].ThreadInit = FlowRecyclerThreadInit;
+    tmm_modules[TMM_FLOWRECYCLER].ThreadDeinit = FlowRecyclerThreadDeinit;
+    tmm_modules[TMM_FLOWRECYCLER].Management = FlowRecycler;
+    tmm_modules[TMM_FLOWRECYCLER].flags = TM_FLAG_MANAGEMENT_TM;
+    SCLogDebug("%s registered", tmm_modules[TMM_FLOWRECYCLER].name);
+
+    SC_ATOMIC_INIT(flowrec_cnt);
+    SC_ATOMIC_INIT(flowrec_busy);
 }

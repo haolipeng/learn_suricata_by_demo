@@ -35,7 +35,6 @@
 #include "flow.h"
 #include "app-layer/app-layer-parser.h"
 
-#include "utils/util-debug.h"
 #include "utils/util-time.h"
 
 #include "reassemble/stream-tcp.h"

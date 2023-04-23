@@ -1,34 +1,14 @@
-#include <stddef.h>
-#include <string.h>
-
-//user header file
 #include "decode/decode.h"
 #include "dpi_module.h"
-#include "dpi_packet.h"
-#include "flow/flow-worker.h"
-#include "tm-threads.h"
 
 dpi_thread_data_t g_dpi_thread_data[MAX_THREADS];
 
 int dpi_recv_packet(io_ctx_t* ctx,uint8_t* ptr, int len){
-    per_core_snap.tick = ctx->tick;
+    Packet* p = PacketGetFromQueueOrAlloc();
+    p->datalink = LINKTYPE_ETHERNET;
 
-    memset(&per_core_packet, 0, sizeof(Packet));
-    per_core_packet.datalink = LINKTYPE_ETHERNET;
-
-    //测试解析以太网数据包
-    DecodeEthernet(&per_core_packet, ptr, len);
-
-    //TODO:基于流的分析和统计
-    //create threadvars
-    char tname[TM_THREAD_NAME_MAX];
-    ThreadVars *tv = TmThreadCreatePacketHandler(tname,
-                                                 "packetpool", "packetpool",
-                                                 "packetpool", "packetpool",
-                                                 "pktacqloop");
-
-    void * thread_data = NULL;
-    FlowWorker(tv, &per_core_packet,thread_data);
+    //解析以太网数据包
+    DecodeEthernet(p, ptr, len);
 
     return 0;
 }

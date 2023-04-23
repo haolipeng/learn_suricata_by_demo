@@ -1,11 +1,4 @@
-//
-// Created by haolipeng on 3/28/23.
-//
-
 #include "stream-tcp-reassemble.h"
-#include "dpi/packet-queue.h"
-#include "decode/decode.h"
-#include "utils/util-debug.h"
 #include "utils/util-pool-thread.h"
 #include "stream-tcp-private.h"
 #include "stream-tcp.h"

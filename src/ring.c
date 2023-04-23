@@ -107,6 +107,7 @@ static void af_packet_stats_v1(int fd, dp_stats_t *stats)
     stats->rx_drops += s.tp_drops;
 }
 
+//////////////////////////////////////afpacket v1版本//////////////////////////////////////////////
 static int dp_ring_v1(int fd, const char *iface, dp_ring_t *ring, bool tap, bool jumboframe, uint blocks, uint batch)
 {
     int enable = 1;
@@ -115,19 +116,6 @@ static int dp_ring_v1(int fd, const char *iface, dp_ring_t *ring, bool tap, bool
     // Packet truncated indication
     setsockopt(fd, SOL_PACKET, PACKET_COPY_THRESH, &enable, sizeof(enable));
 
-    /*
-     * Following comments are quoted from
-     * https://www.kernel.org/doc/Documentation/networking/packet_mmap.txt
-     *
-     * Block size needs to be PAGE_SIZE << MAX_ORDER, PAGE_SIZE is 4096 bytes
-     *
-     * As stated earlier, each block is a contiguous physical region of memory.
-     * These memory regions are allocated with calls to the __get_free_pages() function.
-     * As the name indicates, this function allocates pages of memory, and the second
-     * argument is "order" or a power of two number of pages, that is (for PAGE_SIZE == 4096)
-     * order=0 ==> 4096 bytes, order=1 ==> 8192 bytes, order=2 ==> 16384 bytes, etc.
-     *
-     */
     struct tpacket_req *req = &ring->req;
     if (!tap && jumboframe){
         req->tp_block_size = BLOCK_SIZE_JUMBO_V1;

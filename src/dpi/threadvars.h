@@ -8,6 +8,7 @@
 #include "packet-queue.h"
 #include "tm-queues.h"
 #include "utils/util-atomic.h"
+#include "tm-threads.h"
 
 #define THV_USE                 BIT_U32(0)  /** thread is in use */
 #define THV_INIT_DONE           BIT_U32(1)  /** thread initialization done */
@@ -54,27 +55,17 @@ typedef struct ThreadVars_ {
 
   SC_ATOMIC_DECLARE(uint32_t, flags);
 
+  //TmSlot *tm_slots;
+
   /** outgoing queue and handler */
   Tmq *outq;
   void *outctx;
   void (*tmqh_out)(struct ThreadVars_ *, struct Packet_ *);
 
-  /** queue for decoders to temporarily store extra packets they
-     *  generate. */
   PacketQueueNoLock decode_pq;
-
-  /** Stream packet queue for flow time out injection. Either a pointer to the
-     *  workers input queue or to stream_pq_local */
-  //struct PacketQueue_ *stream_pq;
-  //struct PacketQueue_ *stream_pq_local;
 
   /** pointer to the next thread */
   struct ThreadVars_ *next;
-
-  /* mutex and condition used by management threads */
-
-  //SCCtrlMutex *ctrl_mutex;
-  //SCCtrlCondT *ctrl_cond;
 
   struct FlowQueue_ *flow_queue;
   bool break_loop;

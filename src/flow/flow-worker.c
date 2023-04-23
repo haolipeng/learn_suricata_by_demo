@@ -6,6 +6,7 @@
 #include "reassemble/stream-tcp.h"
 #include "reassemble/stream.h"
 #include "dpi/tmqh-packetpool.h"
+#include "dpi/tm-modules.h"
 #include <stdint.h>
 
 // TODO:modify by haolipeng
@@ -495,5 +496,14 @@ void *FlowWorkerGetDetectCtxPtr(void *flow_worker)
     FlowWorkerThreadData *fw = flow_worker;
 
     return SC_ATOMIC_GET(fw->detect_thread);
+}
+
+void TmModuleFlowWorkerRegister (void)
+{
+    tmm_modules[TMM_FLOWWORKER].name = "FlowWorker";
+    tmm_modules[TMM_FLOWWORKER].ThreadInit = FlowWorkerThreadInit;
+    tmm_modules[TMM_FLOWWORKER].Func = FlowWorker;
+    tmm_modules[TMM_FLOWWORKER].ThreadDeinit = FlowWorkerThreadDeinit;
+    tmm_modules[TMM_FLOWWORKER].flags = TM_FLAG_STREAM_TM|TM_FLAG_DETECT_TM;
 }
 

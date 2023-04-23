@@ -1,8 +1,8 @@
 #ifndef __TM_QUEUES_H__
 #define __TM_QUEUES_H__
 
-#include "queue.h"
-#include "packet-queue.h"
+#include "dpi/queue.h"
+#include "dpi/packet-queue.h"
 
 typedef struct Tmq_ {
   char *name;

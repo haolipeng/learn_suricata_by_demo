@@ -42,6 +42,7 @@ enum PktSrcEnum {
 ////////////////////////////////全局函数声明区////////////////////////////////
 int PacketCallocExtPkt(Packet *p, int datalen);
 
+Packet *PacketGetFromQueueOrAlloc(void);
 Packet *PacketGetFromAlloc(void);
 void PacketFree(Packet *p);
 

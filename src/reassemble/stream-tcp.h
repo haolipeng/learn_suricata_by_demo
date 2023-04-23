@@ -4,6 +4,7 @@
 #include "dpi/packet-queue.h"
 #include "decode/decode.h"
 #include "stream-tcp-reassemble.h"
+#include "dpi/tm-threads-common.h"
 
 #define STREAM_VERBOSE    FALSE
 /* Flag to indicate that the checksum validation for the stream engine

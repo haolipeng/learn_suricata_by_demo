@@ -14,6 +14,9 @@
 #include "packet.h"
 #include "pcap.h"
 #include "utils/util-debug.h"
+#include "dpi/tm-modules.h"
+#include "dpi/source-afp-veth.h"
+#include "flow/flow-worker.h"
 
 #define DEFAULT_MAX_PENDING_PACKETS 1024
 intmax_t max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
@@ -70,6 +73,23 @@ void parse_cmd_line(int argc, char *argv[]){
     }
 }
 
+void RegisterAllModules(void)
+{
+    // zero all module storage
+    memset(tmm_modules, 0, TMM_SIZE * sizeof(TmModule));
+
+    /* managers */
+    TmModuleFlowManagerRegister();
+    TmModuleFlowRecyclerRegister();
+
+    /* af-packet */
+    TmModuleReceiveAFPRegister();
+    TmModuleDecodeAFPRegister();
+
+    /* flow worker */
+    TmModuleFlowWorkerRegister();
+}
+
 int main(int argc, char *argv[])
 {
     //1.解析程序命令行参数
@@ -77,6 +97,9 @@ int main(int argc, char *argv[])
 
     //2.初始化日志系统
     SCLogInitLogModule(NULL);
+
+    //3.need modules
+    RegisterAllModules();
 
     int ret = 0;
     //判断不同运行模式

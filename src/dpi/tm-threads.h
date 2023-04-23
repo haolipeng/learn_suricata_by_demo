@@ -2,9 +2,37 @@
 #define NET_THREAT_DETECT_TM_THREADS_H
 
 #include "threadvars.h"
+#include "utils/util-atomic.h"
 
 #define TM_QUEUE_NAME_MAX 16
 #define TM_THREAD_NAME_MAX 16
+
+//typedef TmEcode (*TmSlotFunc)(ThreadVars *, Packet *, void *);
+
+/*typedef struct TmSlot_ {
+    *//* function pointers *//*
+    union {
+        TmSlotFunc SlotFunc;
+        TmEcode (*PktAcqLoop)(ThreadVars *, void *, void *);
+        TmEcode (*Management)(ThreadVars *, void *);
+    };
+    *//** linked list of slots, used when a pipeline has multiple slots
+     *  in a single thread. *//*
+    struct TmSlot_ *slot_next;
+
+    SC_ATOMIC_DECLARE(void *, slot_data);
+
+    TmEcode (*SlotThreadInit)(ThreadVars *, const void *, void **);
+    void (*SlotThreadExitPrintStats)(ThreadVars *, void *);
+    TmEcode (*SlotThreadDeinit)(ThreadVars *, void *);
+
+    *//* data storage *//*
+    const void *slot_initdata;
+    *//* store the thread module id *//*
+
+    int tm_id;
+
+}TmSlot;*/
 
 enum {
   TVT_PPT,
@@ -26,4 +54,7 @@ ThreadVars *TmThreadCreate(const char *name, const char *inq_name, const char *i
                            void * (*fn_p)(void *), int mucond);
 ThreadVars *TmThreadCreatePacketHandler(const char *, const char *, const char *, const char *, const char *,
                                         const char *);
+
+typedef struct TmModule_ TmModule;
+void TmSlotSetFuncAppend(ThreadVars *tv, TmModule *tm, const void *data);
 #endif // NET_THREAT_DETECT_TM_THREADS_H

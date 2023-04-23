@@ -3,9 +3,7 @@
 
 #include "flow-queue.h"
 #include "flow.h"
-#include "utils/util-atomic.h"
 #include "utils/util-debug.h"
-#include "utils/util-error.h"
 
 FlowQueue *FlowQueueNew(void)
 {

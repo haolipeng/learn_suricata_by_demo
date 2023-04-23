@@ -1,12 +1,7 @@
-//
-// Created by haolipeng on 3/31/23.
-//
-
 #include "decode-tcp.h"
-#include "base.h"
 #include "decode.h"
-#include "dpi/common.h"
 #include "dpi/dpi_module.h"
+#include "dpi/tm-threads-common.h"
 
 #define SET_OPTS(dst, src) \
     (dst).type = (src).type; \

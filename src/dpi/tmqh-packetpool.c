@@ -1,14 +1,6 @@
-#include "packet-queue.h"
-#include "decode/decode.h"
-//#include "detect.h"
-//#include "detect-uricontent.h"
-#include "flow/flow.h"
-#include "threads.h"
-
+#include "dpi/packet-queue.h"
 #include "reassemble/stream-tcp-reassemble.h"
 #include "tmqh-packetpool.h"
-#include "utils/util-debug.h"
-#include "utils/util-error.h"
 #include "utils/util-optimize.h"
 
 /* Number of freed packet to save for one pool before freeing them. */

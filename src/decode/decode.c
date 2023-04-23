@@ -1,4 +1,6 @@
 #include "decode.h"
+#include "dpi/tmqh-packetpool.h"
+
 #define DEFAULT_MTU 1500
 #define DEFAULT_PACKET_SIZE (DEFAULT_MTU + ETHERNET_HEADER_LEN)
 uint32_t default_packet_size = DEFAULT_PACKET_SIZE;
@@ -40,4 +42,17 @@ Packet *PacketGetFromAlloc(void)
 
   SCLogDebug("allocated a new packet only using alloc...");
   return p;
+}
+
+Packet *PacketGetFromQueueOrAlloc(void)
+{
+    /* try the pool first */
+    Packet *p = PacketPoolGetPacket();
+
+    if (p == NULL) {
+        /* non fatal, we're just not processing a packet then */
+        p = PacketGetFromAlloc();
+    }
+
+    return p;
 }

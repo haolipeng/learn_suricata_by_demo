@@ -33,8 +33,8 @@
 
 #include "decode-ipv4.h"
 #include "decode.h"
-#include "dpi/common.h"
 #include "dpi/dpi_module.h"
+#include "dpi/tm-threads-common.h"
 
 /* Generic validation
  *

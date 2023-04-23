@@ -2,9 +2,6 @@
 #include "flow-private.h"
 #include "flow-queue.h"
 #include "flow-util.h"
-#include "dpi/threads.h"
-#include "utils/util-debug.h"
-#include "utils/util-error.h"
 #include <stdlib.h>
 
 typedef struct FlowSparePool {

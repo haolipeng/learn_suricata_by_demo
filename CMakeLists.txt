@@ -26,7 +26,6 @@ add_executable(net_threat_detect
 
         src/dpi/dpi_module.h
         src/dpi/dpi_entry.c src/dpi/dpi_entry.h
-        src/dpi/dpi_packet.c src/dpi/dpi_packet.h
         src/reassemble/tree.h
 
         src/utils/helper.h
@@ -80,7 +79,8 @@ add_executable(net_threat_detect
         src/dpi/tm-threads.h src/dpi/tm-threads.c
         src/dpi/tm-queues.h src/dpi/tm-queues.c
         src/dpi/tm-queuehandlers.h src/dpi/tm-queuehandlers.c
-        src/flow/flow-worker.h src/flow/flow-worker.c)
+        src/flow/flow-worker.h src/flow/flow-worker.c
+        src/dpi/source-afp-veth.h src/dpi/source-afp-veth.c src/dpi/tm-modules.h src/dpi/tm-modules.c src/dpi/tm-threads-common.h)
 
 target_link_libraries(net_threat_detect
         pthread

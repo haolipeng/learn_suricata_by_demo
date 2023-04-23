@@ -1,10 +1,7 @@
-//
-// Created by haolipeng on 4/1/23.
-//
 #include "decode-ethernet.h"
 #include "decode.h"
-#include "dpi/common.h"
 #include "dpi/dpi_module.h"
+#include "dpi/tm-threads-common.h"
 
 int DecodeEthernet(Packet *p,const uint8_t *pkt, uint32_t len)
 {

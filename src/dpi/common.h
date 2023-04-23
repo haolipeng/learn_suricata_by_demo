@@ -1,7 +1,3 @@
-//
-// Created by haolipeng on 3/28/23.
-//
-
 #ifndef NET_THREAT_DETECT_COMMON_H
 #define NET_THREAT_DETECT_COMMON_H
 #include <assert.h>
@@ -50,10 +46,4 @@
         (b) = t;                        \
     } while (0)
 
-/*Error codes for the thread modules*/
-typedef enum {
-    TM_ECODE_OK = 0,    /**< Thread module exits OK*/
-    TM_ECODE_FAILED,    /**< Thread module exits due to failure*/
-    TM_ECODE_DONE,    /**< Thread module task is finished*/
-} TmEcode;
 #endif //NET_THREAT_DETECT_COMMON_H

@@ -9,7 +9,6 @@
 
 #include "reassemble/stream-tcp-private.h"
 #include "reassemble/stream-tcp.h"
-#include "utils/util-debug.h"
 
 //#include "detect.h"
 //#include "detect-engine-state.h"
