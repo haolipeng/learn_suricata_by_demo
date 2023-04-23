@@ -1,0 +1,7 @@
+#ifndef NET_THREAT_DETECT_RUNMODE_AF_PACKET_H
+#define NET_THREAT_DETECT_RUNMODE_AF_PACKET_H
+
+int RunModeIdsAFPSingle(void);
+void RunModeIdsAFPRegister(void);
+
+#endif //NET_THREAT_DETECT_RUNMODE_AF_PACKET_H

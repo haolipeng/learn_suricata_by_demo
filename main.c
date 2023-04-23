@@ -1,7 +1,3 @@
-//
-// Created by haolipeng on 12/28/22.
-//
-
 #include <unistd.h>
 #include <strings.h>
 #include <string.h>
@@ -15,8 +11,10 @@
 #include "pcap.h"
 #include "utils/util-debug.h"
 #include "dpi/tm-modules.h"
-#include "dpi/source-afp-veth.h"
+#include "dpi/source-af-packet.h"
 #include "flow/flow-worker.h"
+#include "dpi/runmodes.h"
+#include "dpi/tm-queuehandlers.h"
 
 #define DEFAULT_MAX_PENDING_PACKETS 1024
 intmax_t max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
@@ -98,12 +96,15 @@ int main(int argc, char *argv[])
     //2.初始化日志系统
     SCLogInitLogModule(NULL);
 
-    //3.need modules
+    //3.Register runmodes
+    RunModeRegisterRunModes();
+
+    //4.register all modules
     RegisterAllModules();
 
     int ret = 0;
-    //判断不同运行模式
-    if(NULL != g_pcap_path){
+    //5.判断不同运行模式
+    /*if(NULL != g_pcap_path){
         ret = pcap_run(g_pcap_path);
     }else{
         //Start capture interface
@@ -113,13 +114,17 @@ int main(int argc, char *argv[])
         if(g_virtual_iface != NULL){
             ret = net_run(g_virtual_iface);
         }
+    }*/
+
+    TmqhSetup();
+
+    //TODO:use only single run mode for test,need modify
+    RunModeDispatch(RUNMODE_AFP_DEV,"single");
+
+    while(1){
+        sleep(1);
     }
 
-    //开启flowManager线程
-    FlowManagerThreadSpawn();
-
-    //开启flowRecycler线程
-    FlowRecyclerThreadSpawn();
-
+    printf("program is almost shutdown");
     return ret;
 }

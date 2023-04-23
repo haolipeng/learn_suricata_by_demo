@@ -19,57 +19,59 @@
 #define THV_CLOSED              BIT_U32(6)  /** thread done, should be joinable */
 #define THV_DEINIT              BIT_U32(7)
 #define THV_RUNNING_DONE        BIT_U32(8)
+#define THV_KILL_PKTACQ         BIT_U32(9)  /**< flag thread to stop packet acq */
+#define THV_FLOW_LOOP           BIT_U32(10) /**< thread is in flow shutdown loop */
 
 typedef struct ThreadVars_ {
-  pthread_t t;
-  void *(*tm_func)(void *);
+    pthread_t t;
+    void *(*tm_func)(void *);
 
-  char name[16];
-  char *printable_name;
-  char *thread_group_name;
+    char name[16];
 
-  uint8_t thread_setup_flags;
+    /** the type of thread as defined in tm-threads.h (TVT_PPT, TVT_MGMT) */
+    uint8_t type;
 
-  /** the type of thread as defined in tm-threads.h (TVT_PPT, TVT_MGMT) */
-  uint8_t type;
-
-  uint16_t cpu_affinity; /** cpu or core number to set affinity to */
-  int thread_priority; /** priority (real time) for this thread. Look at threads.h */
+    uint16_t cpu_affinity; /** cpu or core number to set affinity to */
+    int thread_priority; /** priority (real time) for this thread. Look at threads.h */
 
 
-  /** TmModule::flags for each module part of this thread */
-  uint8_t tmm_flags;
+    /** TmModule::flags for each module part of this thread */
+    uint8_t tmm_flags;
 
-  uint8_t cap_flags; /**< Flags to indicate the capabilities of all the
-                          TmModules resgitered under this thread */
+    uint8_t inq_id;
+    uint8_t outq_id;
 
-  uint8_t inq_id;
-  uint8_t outq_id;
+    /** local id */
+    int id;
 
-  /** local id */
-  int id;
+    /** incoming queue and handler */
+    Tmq *inq;
+    struct Packet_ * (*tmqh_in)(struct ThreadVars_ *);
 
-  /** incoming queue and handler */
-  Tmq *inq;
-  struct Packet_ * (*tmqh_in)(struct ThreadVars_ *);
+    SC_ATOMIC_DECLARE(uint32_t, flags);
 
-  SC_ATOMIC_DECLARE(uint32_t, flags);
+    struct TmSlot_ *tm_slots;
 
-  //TmSlot *tm_slots;
+    /** pointer to the flowworker in the pipeline. Used as starting point
+     *  for injected packets. Can be NULL if the flowworker is not part
+     *  of this thread. */
+    struct TmSlot_ *tm_flowworker;
 
-  /** outgoing queue and handler */
-  Tmq *outq;
-  void *outctx;
-  void (*tmqh_out)(struct ThreadVars_ *, struct Packet_ *);
+    /** outgoing queue and handler */
+    Tmq *outq;
+    void *outctx;
+    void (*tmqh_out)(struct ThreadVars_ *, struct Packet_ *);
 
-  PacketQueueNoLock decode_pq;
+    PacketQueueNoLock decode_pq;
 
-  /** pointer to the next thread */
-  struct ThreadVars_ *next;
+    struct PacketQueue_ *stream_pq;
+    struct PacketQueue_ *stream_pq_local;
 
-  struct FlowQueue_ *flow_queue;
-  bool break_loop;
+    /** pointer to the next thread */
+    struct ThreadVars_ *next;
 
+    struct FlowQueue_ *flow_queue;
+    bool break_loop;
 }ThreadVars;
 
 #endif // NET_THREAT_DETECT_THREADVARS_H

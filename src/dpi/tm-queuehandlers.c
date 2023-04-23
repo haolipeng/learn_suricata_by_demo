@@ -1,4 +1,5 @@
 #include "tm-queuehandlers.h"
+#include "tmqh-packetpool.h"
 
 Tmqh tmqh_table[TMQH_SIZE];
 
@@ -7,7 +8,7 @@ void TmqhSetup (void)
   memset(&tmqh_table, 0, sizeof(tmqh_table));
 
   //TmqhSimpleRegister();
-  //TmqhPacketpoolRegister();
+  TmqhPacketpoolRegister();
   //TmqhFlowRegister();
 }
 

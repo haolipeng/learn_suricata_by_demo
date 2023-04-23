@@ -7,8 +7,9 @@ int dpi_recv_packet(io_ctx_t* ctx,uint8_t* ptr, int len){
     Packet* p = PacketGetFromQueueOrAlloc();
     p->datalink = LINKTYPE_ETHERNET;
 
-    //解析以太网数据包
-    DecodeEthernet(p, ptr, len);
-
+    //ThreadVars *tv,
+    // TmSlot *s,
+    // Packet *p
+    //TmThreadsSlotProcessPkt(); //TODO:
     return 0;
 }

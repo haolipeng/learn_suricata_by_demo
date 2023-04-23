@@ -2,6 +2,7 @@
 #include "reassemble/stream-tcp-reassemble.h"
 #include "tmqh-packetpool.h"
 #include "utils/util-optimize.h"
+#include "tm-queuehandlers.h"
 
 /* Number of freed packet to save for one pool before freeing them. */
 #define MAX_PENDING_RETURN_PACKETS 32
@@ -12,6 +13,13 @@ thread_local PktPool thread_pkt_pool;
 static inline PktPool *GetThreadPacketPool(void)
 {
     return &thread_pkt_pool;
+}
+
+void TmqhPacketpoolRegister (void)
+{
+    tmqh_table[TMQH_PACKETPOOL].name = "packetpool";
+    tmqh_table[TMQH_PACKETPOOL].InHandler = TmqhInputPacketpool;
+    tmqh_table[TMQH_PACKETPOOL].OutHandler = TmqhOutputPacketpool;
 }
 
 static int PacketPoolIsEmpty(PktPool *pool)
