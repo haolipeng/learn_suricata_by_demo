@@ -5,9 +5,10 @@
 #ifndef NET_THREAT_DETECT_DECODE_H
 #define NET_THREAT_DETECT_DECODE_H
 
-#include <stdint.h>
-#include <netinet/in.h>
 #include <limits.h>
+#include <netinet/in.h>
+#include <pcap/dlt.h>
+#include <stdint.h>
 #include <stdlib.h>
 
 #include "decode-events.h"
@@ -23,6 +24,14 @@
 
 #include "flow/flow.h"
 #include "utils/util-debug.h"
+
+typedef enum {
+  CHECKSUM_VALIDATION_DISABLE,
+  CHECKSUM_VALIDATION_ENABLE,
+  CHECKSUM_VALIDATION_AUTO,
+  CHECKSUM_VALIDATION_RXONLY,
+  CHECKSUM_VALIDATION_KERNEL,
+} ChecksumValidationMode;
 
 enum PktSrcEnum {
     PKT_SRC_WIRE = 1,
@@ -40,17 +49,25 @@ enum PktSrcEnum {
 };
 
 ////////////////////////////////全局函数声明区////////////////////////////////
+int PacketSetData(Packet *p, const uint8_t *pktdata, uint32_t pktlen);
+int PacketCopyDataOffset(Packet *p, uint32_t offset, const uint8_t *data, uint32_t datalen);
+
 int PacketCallocExtPkt(Packet *p, int datalen);
 
 Packet *PacketGetFromQueueOrAlloc(void);
 Packet *PacketGetFromAlloc(void);
 void PacketFree(Packet *p);
+void PacketFreeOrRelease(Packet *p);
+int PacketCopyData(Packet *p, const uint8_t *pktdata, uint32_t pktlen);
 
 int DecodeEthernet(Packet *, const uint8_t *, uint32_t);
 int DecodeIPV4(Packet *, const uint8_t *, uint16_t);
 int DecodeIPV6(Packet *, const uint8_t *, uint16_t);
 int DecodeUDP(Packet *, const uint8_t *, uint16_t);
 int DecodeTCP(Packet *, const uint8_t *, uint16_t);
+
+#define LINKTYPE_RAW         DLT_RAW
+#define MAX_PAYLOAD_SIZE (40 + 65536 + 28)
 
 #define DecodeSetNoPacketInspectionFlag(p) do { \
         (p)->flags |= PKT_NOPACKET_INSPECTION;  \
@@ -316,6 +333,5 @@ static inline bool DecodeNetworkLayer(const uint16_t proto, Packet *p, const uin
     }
     return true;
 }
-
 
 #endif //NET_THREAT_DETECT_DECODE_H

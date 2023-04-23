@@ -8,6 +8,7 @@
 #include "decode/decode-ipv6.h"
 #include "decode/decode-tcp.h"
 #include "decode/decode-udp.h"
+#include "source-af-packet.h"
 
 /** number of decoder events we support per packet. Power of 2 minus 1
  *  for memory layout */
@@ -61,6 +62,12 @@ typedef struct Packet_
   uint32_t flow_hash;
 
   struct timeval ts;
+
+  union {
+#ifdef AF_PACKET
+    AFPPacketVars afp_v;
+#endif
+  };
 
   /** The release function for packet structure and data */
   void (*ReleasePacket)(struct Packet_ *);

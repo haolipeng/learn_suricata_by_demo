@@ -58,4 +58,7 @@ ThreadVars *TmThreadCreatePacketHandler(const char *, const char *, const char *
 typedef struct TmModule_ TmModule;
 void TmSlotSetFuncAppend(ThreadVars *tv, TmModule *tm, const void *data);
 TmEcode TmThreadSpawn(ThreadVars *tv);
+TmEcode TmThreadsSlotVarRun (ThreadVars *tv, Packet *p, TmSlot *slot);
+TmEcode TmThreadsSlotProcessPkt(ThreadVars *tv, TmSlot *s, Packet *p);
+
 #endif // NET_THREAT_DETECT_TM_THREADS_H

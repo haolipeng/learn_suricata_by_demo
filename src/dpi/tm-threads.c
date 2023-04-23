@@ -497,3 +497,57 @@ TmEcode TmThreadSpawn(ThreadVars *tv)
     //TmThreadAppend(tv, tv->type);
     return TM_ECODE_OK;
 }
+
+TmEcode TmThreadsSlotVarRun(ThreadVars *tv, Packet *p, TmSlot *slot)
+{
+  for (TmSlot *s = slot; s != NULL; s = s->slot_next) {
+    TmEcode r = s->SlotFunc(tv, p, SC_ATOMIC_GET(s->slot_data));
+
+    /* handle error */
+    if (unlikely(r == TM_ECODE_FAILED)) {
+      /* Encountered error.  Return packets to packetpool and return */
+      //TODO:modify by haolipeng
+      //TmThreadsSlotProcessPktFail(tv, s, NULL);
+      return TM_ECODE_FAILED;
+    }
+
+    /* handle new packets */
+    /*while (tv->decode_pq.top != NULL) {
+      Packet *extra_p = PacketDequeueNoLock(&tv->decode_pq);
+      if (unlikely(extra_p == NULL))
+        continue;
+
+      *//* see if we need to process the packet *//*
+      if (s->slot_next != NULL) {
+        r = TmThreadsSlotVarRun(tv, extra_p, s->slot_next);
+        if (unlikely(r == TM_ECODE_FAILED)) {
+          TmThreadsSlotProcessPktFail(tv, s, extra_p);
+          return TM_ECODE_FAILED;
+        }
+      }
+      tv->tmqh_out(tv, extra_p);
+    }*/
+  }
+
+  return TM_ECODE_OK;
+}
+
+TmEcode TmThreadsSlotProcessPkt(ThreadVars *tv, TmSlot *s, Packet *p)
+{
+  if (s == NULL) {
+    tv->tmqh_out(tv, p);
+    return TM_ECODE_OK;
+  }
+
+  TmEcode r = TmThreadsSlotVarRun(tv, p, s);
+  if (unlikely(r == TM_ECODE_FAILED)) {
+    //TmThreadsSlotProcessPktFail(tv, s, p);
+    return TM_ECODE_FAILED;
+  }
+
+  tv->tmqh_out(tv, p);
+
+  //TmThreadsHandleInjectedPackets(tv);
+
+  return TM_ECODE_OK;
+}

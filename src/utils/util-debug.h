@@ -154,6 +154,9 @@ void SCLogErr(int x, const char *file, const char *func, const int line,
         __FILE__, __FUNCTION__, __LINE__, \
         err_code, __VA_ARGS__)
 
+#define SCLogPerf(...) SCLog(SC_LOG_PERF, \
+        __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+
 #define FatalError(x, ...) do {                                             \
     SCLogError(x, __VA_ARGS__);                                             \
     exit(EXIT_FAILURE);                                                     \

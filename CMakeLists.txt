@@ -80,7 +80,7 @@ add_executable(net_threat_detect
         src/dpi/tm-queues.h src/dpi/tm-queues.c
         src/dpi/tm-queuehandlers.h src/dpi/tm-queuehandlers.c
         src/flow/flow-worker.h src/flow/flow-worker.c
-        src/dpi/source-af-packet.h src/dpi/source-af-packet.c src/dpi/tm-modules.h src/dpi/tm-modules.c src/dpi/tm-threads-common.h src/dpi/runmode-af-packet.h src/dpi/runmode-af-packet.c src/dpi/runmodes.c src/dpi/runmodes.h src/dpi/runmode-pcap-file.h src/dpi/runmode-pcap-file.c)
+        src/dpi/source-af-packet.h src/dpi/source-af-packet.c src/dpi/tm-modules.h src/dpi/tm-modules.c src/dpi/tm-threads-common.h src/dpi/runmode-af-packet.h src/dpi/runmode-af-packet.c src/dpi/runmodes.c src/dpi/runmodes.h src/dpi/runmode-pcap-file.h src/dpi/runmode-pcap-file.c src/decode/decode-vlan.h src/dpi/util-device.h)
 
 target_link_libraries(net_threat_detect
         pthread
