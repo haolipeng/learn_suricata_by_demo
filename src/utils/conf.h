@@ -21,6 +21,8 @@ typedef struct ConfNode_ {
   TAILQ_ENTRY(ConfNode_) next;
 } ConfNode;
 
+void ConfInit(void);
+
 ConfNode *ConfNodeNew(void);
 void ConfNodeFree(ConfNode *node);
 

@@ -88,7 +88,7 @@ add_executable(net_threat_detect
         src/decode/decode-vlan.h src/dpi/util-device.h
         src/dpi/conf-yaml-loader.c src/dpi/conf-yaml-loader.h
         src/utils/util-path.c src/utils/util-path.h
-        src/utils/util-mem.h src/utils/util-conf.h src/utils/util-conf.c)
+        src/utils/util-mem.h src/utils/util-conf.h src/utils/util-conf.c src/dpi/autoconf.h)
 
 target_link_libraries(net_threat_detect
         pthread

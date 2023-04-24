@@ -217,11 +217,11 @@ static void *TmThreadsSlotPktAcqLoop(void *td)
 
     while(run) {
         //TODO:modify by haolipeng
-        /*if (TmThreadsCheckFlag(tv, THV_PAUSE)) {
+        if (TmThreadsCheckFlag(tv, THV_PAUSE)) {
             TmThreadsSetFlag(tv, THV_PAUSED);
             TmThreadTestThreadUnPaused(tv);
             TmThreadsUnsetFlag(tv, THV_PAUSED);
-        }*/
+        }
 
         r = s->PktAcqLoop(tv, SC_ATOMIC_GET(s->slot_data), s);
 
@@ -301,7 +301,7 @@ static TmEcode TmThreadSetSlots(ThreadVars *tv, const char *name, void *(*fn_p)(
 
     return TM_ECODE_OK;
 
-    error:
+error:
     return TM_ECODE_FAILED;
 }
 

@@ -142,6 +142,21 @@ int ConfValIsTrue(const char *val)
     return 0;
 }
 
+void ConfInit(void)
+{
+    if (root != NULL) {
+        SCLogDebug("already initialized");
+        return;
+    }
+    root = ConfNodeNew();
+    if (root == NULL) {
+        FatalError(SC_ERR_FATAL,
+                   "ERROR: Failed to allocate memory for root configuration node, "
+                   "aborting.");
+    }
+    SCLogDebug("configuration module initialized");
+}
+
 int ConfValIsFalse(const char *val)
 {
     const char *falses[] = {"0", "no", "false", "off"};

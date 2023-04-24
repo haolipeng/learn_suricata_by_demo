@@ -505,7 +505,15 @@ int RunModeIdsAFPSingle(void)
     int ret;
     const char *live_dev = NULL;
 
+    //RunModeInitialize();
     //TimeModeSetLive();
+
+    extern char* g_in_iface;
+    (void)ConfGet("af-packet.live-interface", &live_dev);
+    if(NULL == live_dev){
+        live_dev = g_in_iface;
+    }
+
     const char *thread_name_single = "W";
     ret = RunModeSetLiveCaptureSingle(ParseAFPConfig,
                                       "ReceiveAFP",

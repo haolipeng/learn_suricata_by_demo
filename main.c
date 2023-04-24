@@ -16,6 +16,7 @@
 #include "dpi/runmodes.h"
 #include "dpi/tm-queuehandlers.h"
 #include "dpi/conf-yaml-loader.h"
+#include "utils/conf.h"
 
 #define DEFAULT_CONF_FILE "/etc/suricata/suricata.yaml"
 #define DEFAULT_MAX_PENDING_PACKETS 1024
@@ -110,6 +111,9 @@ int main(int argc, char *argv[])
 
     //2.初始化日志系统
     SCLogInitLogModule(NULL);
+
+    //3.初始化Config系统
+    ConfInit();
 
     //3.Register runmodes
     RunModeRegisterRunModes();
