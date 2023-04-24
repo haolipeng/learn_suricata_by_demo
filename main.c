@@ -104,6 +104,28 @@ static TmEcode LoadYamlConfig(const char* conf_filename)
     return (TM_ECODE_OK);
 }
 
+static TmEcode ParseInterfacesList(const int runmode, char *pcap_dev)
+{
+    /* run the selected runmode */
+    if (runmode == RUNMODE_AFP_DEV) {
+        /* iface has been set on command line */
+        if (strlen(pcap_dev)) {
+            if (ConfSetFinal("af-packet.live-interface", pcap_dev) != 1) {
+                SCLogError(SC_ERR_INITIALIZATION, "Failed to set af-packet.live-interface");
+                return (TM_ECODE_FAILED);
+            }
+        } else {
+            int ret = LiveBuildDeviceList("af-packet");
+            if (ret == 0) {
+                SCLogError(SC_ERR_INITIALIZATION, "No interface found in config for af-packet");
+                return (TM_ECODE_FAILED);
+            }
+        }
+    }
+
+    return (TM_ECODE_OK);
+}
+
 int main(int argc, char *argv[])
 {
     //1.解析程序命令行参数
