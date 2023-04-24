@@ -88,7 +88,12 @@ add_executable(net_threat_detect
         src/decode/decode-vlan.h src/dpi/util-device.h
         src/dpi/conf-yaml-loader.c src/dpi/conf-yaml-loader.h
         src/utils/util-path.c src/utils/util-path.h
-        src/utils/util-mem.h src/utils/util-conf.h src/utils/util-conf.c src/dpi/autoconf.h)
+        src/utils/util-mem.h src/dpi/autoconf.h
+        src/utils/util-conf.h src/utils/util-conf.c
+        src/utils/util-device.h src/utils/util-device.c
+        src/dpi/main.h
+        src/utils/util-strlcatu.h src/utils/util-strlcatu.c
+        src/utils/util-exception-policy.h src/utils/util-exception-policy.c)
 
 target_link_libraries(net_threat_detect
         pthread

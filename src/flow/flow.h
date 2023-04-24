@@ -516,9 +516,12 @@ static inline bool FlowIsBypassed(const Flow *f)
 }
 
 //函数声明区
+void FlowInitConfig (char);
+
 void FlowSetupPacket(Packet *p);
 void FlowHandlePacket (ThreadVars *, FlowLookupStruct *, Packet *);
 int FlowClearMemory(Flow *,uint8_t );
+int FlowSetProtoFreeFunc (uint8_t proto, void (*Free)(void *));
 void FlowHandlePacketUpdate(Flow *f, Packet *p, ThreadVars *tv, DecodeThreadVars *dtv);
 void FlowCleanupAppLayer(Flow *);
 int FlowChangeProto(Flow *);

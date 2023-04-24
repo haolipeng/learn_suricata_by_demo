@@ -1,5 +1,5 @@
-#ifndef NET_THREAT_DETECT_COMMON_H
-#define NET_THREAT_DETECT_COMMON_H
+#ifndef NET_THREAT_DETECT_DP_COMMON_H
+#define NET_THREAT_DETECT_DP_COMMON_H
 #include <stdbool.h>
 #include <sys/epoll.h>
 #include <linux/if_packet.h>

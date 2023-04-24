@@ -27,6 +27,10 @@ typedef struct TmModule_ {
     TmEcode (*PktAcqBreakLoop)(ThreadVars *, void *);
 
     TmEcode (*Management)(ThreadVars *, void *);
+
+    /** global Init/DeInit */
+    TmEcode (*Init)(void);
+    TmEcode (*DeInit)(void);
     uint8_t flags;
 } TmModule;
 
@@ -35,5 +39,7 @@ extern TmModule tmm_modules[TMM_SIZE];
 //extern function
 TmModule *TmModuleGetByName(const char *name);
 int TmModuleGetIDForTM(TmModule *tm);
+void TmModuleRunDeInit(void);
+void TmModuleRunInit(void);
 
 #endif //NET_THREAT_DETECT_TM_MODULES_H

@@ -10,62 +10,21 @@
 #include "stream-tcp.h"
 #include "dpi/tmqh-packetpool.h"
 #include "dpi/tm-threads-common.h"
+#include "utils/conf.h"
+#include "utils/util-misc.h"
+#include "utils/util-random.h"
+
+#define STREAMTCP_DEFAULT_PREALLOC              2048
+#define STREAMTCP_DEFAULT_MEMCAP                (64 * 1024 * 1024)  /* 64mb */
+#define STREAMTCP_DEFAULT_REASSEMBLY_MEMCAP     (256 * 1024 * 1024) /* 256mb */
+#define STREAMTCP_DEFAULT_TOSERVER_CHUNK_SIZE   2560
+#define STREAMTCP_DEFAULT_TOCLIENT_CHUNK_SIZE   2560
+#define STREAMTCP_DEFAULT_MAX_SYNACK_QUEUED     5
 
 TcpStreamCnf stream_config;
 SC_ATOMIC_DECLARE(uint64_t, st_memuse);
 static PoolThread *ssn_pool = NULL;
 static SCMutex ssn_pool_mutex = SCMUTEX_INITIALIZER; /**< init only, protect initializing and growing pool */
-
-void StreamTcpInitMemuse(void)
-{
-  SC_ATOMIC_INIT(st_memuse);
-}
-
-void StreamTcpIncrMemuse(uint64_t size)
-{
-  (void) SC_ATOMIC_ADD(st_memuse, size);
-  SCLogDebug("STREAM %"PRIu64", incr %"PRIu64, StreamTcpMemuseCounter(), size);
-  return;
-}
-
-void StreamTcpDecrMemuse(uint64_t size)
-{
-  (void) SC_ATOMIC_SUB(st_memuse, size);
-  SCLogDebug("STREAM %"PRIu64", decr %"PRIu64, StreamTcpMemuseCounter(), size);
-  return;
-}
-
-void StreamTcpStreamCleanup(TcpStream *stream)
-{
-  if (stream != NULL) {
-    //StreamTcpSackFreeList(stream);
-    StreamTcpReturnStreamSegments(stream);
-    StreamingBufferClear(&stream->sb);
-  }
-}
-
-void StreamTcpSessionCleanup(TcpSession *ssn)
-{
-  TcpStateQueue *q, *q_next;
-
-  if (ssn == NULL)
-    return;
-
-  StreamTcpStreamCleanup(&ssn->client);
-  StreamTcpStreamCleanup(&ssn->server);
-
-  q = ssn->queue;
-  while (q != NULL) {
-    q_next = q->next;
-    free(q);
-    q = q_next;
-    StreamTcpDecrMemuse((uint64_t)sizeof(TcpStateQueue));
-  }
-  ssn->queue = NULL;
-  ssn->queue_len = 0;
-
-  return ;
-}
 
 /*********************函数声明区**********************/
 static int StreamTcpPacketStateNone(ThreadVars *tv, Packet *p,StreamTcpThread *stt, TcpSession *ssn,PacketQueueNoLock *pq);
@@ -78,6 +37,57 @@ static int StreamTcpHandleFin(ThreadVars *tv, StreamTcpThread *, TcpSession *, P
 static inline int StreamTcpValidateAck(TcpSession *ssn, TcpStream *, Packet *);
 
 #define OS_POLICY_DEFAULT   OS_POLICY_BSD
+
+void StreamTcpInitMemuse(void)
+{
+    SC_ATOMIC_INIT(st_memuse);
+}
+
+void StreamTcpIncrMemuse(uint64_t size)
+{
+    (void) SC_ATOMIC_ADD(st_memuse, size);
+    SCLogDebug("STREAM %"PRIu64", incr %"PRIu64, StreamTcpMemuseCounter(), size);
+    return;
+}
+
+void StreamTcpDecrMemuse(uint64_t size)
+{
+    (void) SC_ATOMIC_SUB(st_memuse, size);
+    SCLogDebug("STREAM %"PRIu64", decr %"PRIu64, StreamTcpMemuseCounter(), size);
+    return;
+}
+
+void StreamTcpStreamCleanup(TcpStream *stream)
+{
+    if (stream != NULL) {
+        //StreamTcpSackFreeList(stream);
+        StreamTcpReturnStreamSegments(stream);
+        StreamingBufferClear(&stream->sb);
+    }
+}
+
+void StreamTcpSessionCleanup(TcpSession *ssn)
+{
+    TcpStateQueue *q, *q_next;
+
+    if (ssn == NULL)
+        return;
+
+    StreamTcpStreamCleanup(&ssn->client);
+    StreamTcpStreamCleanup(&ssn->server);
+
+    q = ssn->queue;
+    while (q != NULL) {
+        q_next = q->next;
+        free(q);
+        q = q_next;
+        StreamTcpDecrMemuse((uint64_t)sizeof(TcpStateQueue));
+    }
+    ssn->queue = NULL;
+    ssn->queue_len = 0;
+
+    return ;
+}
 
 void StreamTcpSetOSPolicy(TcpStream *stream, Packet *p)
 {
@@ -149,6 +159,17 @@ void StreamTcpSetOSPolicy(TcpStream *stream, Packet *p)
     if (SEQ_GT(((win) + sacked_size__), (stream)->next_win)) { \
         (stream)->next_win = ((win) + sacked_size__); \
     } \
+}
+
+static int RandomGetWrap(void)
+{
+    unsigned long r;
+
+    do {
+        r = RandomGet();
+    } while(r >= ULONG_MAX - (ULONG_MAX % RAND_MAX));
+
+    return r % RAND_MAX;
 }
 
 /** \internal
@@ -1990,6 +2011,303 @@ int TcpSessionPacketSsnReuse(const Packet *p, const Flow *f, const void *tcp_ssn
     }
   }
   return 0;
+}
+
+void StreamTcpInitConfig(char quiet)
+{
+    intmax_t value = 0;
+    uint16_t rdrange = 10;
+
+    SCLogDebug("Initializing Stream");
+
+    memset(&stream_config,  0, sizeof(stream_config));
+
+    SC_ATOMIC_INIT(stream_config.memcap);
+    SC_ATOMIC_INIT(stream_config.reassembly_memcap);
+
+    if ((ConfGetInt("stream.max-sessions", &value)) == 1) {
+        SCLogWarning(SC_WARN_OPTION_OBSOLETE, "max-sessions is obsolete. "
+                                              "Number of concurrent sessions is now only limited by Flow and "
+                                              "TCP stream engine memcaps.");
+    }
+
+    if ((ConfGetInt("stream.prealloc-sessions", &value)) == 1) {
+        stream_config.prealloc_sessions = (uint32_t)value;
+    } else {
+        stream_config.prealloc_sessions = STREAMTCP_DEFAULT_PREALLOC;
+        if (ConfGetNode("stream.prealloc-sessions") != NULL) {
+            WarnInvalidConfEntry("stream.prealloc_sessions",
+                                 "%"PRIu32,
+                                 stream_config.prealloc_sessions);
+        }
+    }
+    if (!quiet) {
+        SCLogConfig("stream \"prealloc-sessions\": %"PRIu32" (per thread)",
+                    stream_config.prealloc_sessions);
+    }
+
+    const char *temp_stream_memcap_str;
+    if (ConfGetValue("stream.memcap", &temp_stream_memcap_str) == 1) {
+        uint64_t stream_memcap_copy;
+        if (ParseSizeStringU64(temp_stream_memcap_str, &stream_memcap_copy) < 0) {
+            SCLogError(SC_ERR_SIZE_PARSE, "Error parsing stream.memcap "
+                                          "from conf file - %s.  Killing engine",
+                       temp_stream_memcap_str);
+            exit(EXIT_FAILURE);
+        } else {
+            SC_ATOMIC_SET(stream_config.memcap, stream_memcap_copy);
+        }
+    } else {
+        SC_ATOMIC_SET(stream_config.memcap, STREAMTCP_DEFAULT_MEMCAP);
+    }
+
+    if (!quiet) {
+        SCLogConfig("stream \"memcap\": %"PRIu64, SC_ATOMIC_GET(stream_config.memcap));
+    }
+
+    ConfGetBool("stream.midstream", &stream_config.midstream);
+
+    if (!quiet) {
+        SCLogConfig("stream \"midstream\" session pickups: %s", stream_config.midstream ? "enabled" : "disabled");
+    }
+
+    ConfGetBool("stream.async-oneside", &stream_config.async_oneside);
+
+    if (!quiet) {
+        SCLogConfig("stream \"async-oneside\": %s", stream_config.async_oneside ? "enabled" : "disabled");
+    }
+
+    int csum = 0;
+
+    if ((ConfGetBool("stream.checksum-validation", &csum)) == 1) {
+        if (csum == 1) {
+            stream_config.flags |= STREAMTCP_INIT_FLAG_CHECKSUM_VALIDATION;
+        }
+        /* Default is that we validate the checksum of all the packets */
+    } else {
+        stream_config.flags |= STREAMTCP_INIT_FLAG_CHECKSUM_VALIDATION;
+    }
+
+    if (!quiet) {
+        SCLogConfig("stream \"checksum-validation\": %s",
+                    stream_config.flags & STREAMTCP_INIT_FLAG_CHECKSUM_VALIDATION ?
+                    "enabled" : "disabled");
+    }
+
+    const char *temp_stream_inline_str;
+    if (ConfGetValue("stream.inline", &temp_stream_inline_str) == 1) {
+        //TODO:modify by haolipeng
+    } else {
+
+    }
+    stream_config.ssn_memcap_policy = ExceptionPolicyParse("stream.memcap-policy", true);
+    stream_config.reassembly_memcap_policy =
+            ExceptionPolicyParse("stream.reassembly.memcap-policy", true);
+    SCLogConfig("memcap-policy: %u/%u", stream_config.ssn_memcap_policy,
+                stream_config.reassembly_memcap_policy);
+    stream_config.midstream_policy = ExceptionPolicyParse("stream.midstream-policy", true);
+    if (stream_config.midstream && stream_config.midstream_policy != EXCEPTION_POLICY_IGNORE) {
+        SCLogWarning(SC_WARN_COMPATIBILITY,
+                     "stream.midstream_policy setting conflicting with stream.midstream enabled. "
+                     "Ignoring stream.midstream_policy.");
+        stream_config.midstream_policy = EXCEPTION_POLICY_IGNORE;
+    }
+
+    if (!quiet) {
+        SCLogConfig("stream.\"inline\": %s",
+                    stream_config.flags & STREAMTCP_INIT_FLAG_INLINE
+                    ? "enabled" : "disabled");
+    }
+
+    int bypass = 0;
+    if ((ConfGetBool("stream.bypass", &bypass)) == 1) {
+        if (bypass == 1) {
+            stream_config.flags |= STREAMTCP_INIT_FLAG_BYPASS;
+        }
+    }
+
+    if (!quiet) {
+        SCLogConfig("stream \"bypass\": %s",
+                    (stream_config.flags & STREAMTCP_INIT_FLAG_BYPASS)
+                    ? "enabled" : "disabled");
+    }
+
+    int drop_invalid = 0;
+    if ((ConfGetBool("stream.drop-invalid", &drop_invalid)) == 1) {
+        if (drop_invalid == 1) {
+            stream_config.flags |= STREAMTCP_INIT_FLAG_DROP_INVALID;
+        }
+    } else {
+        stream_config.flags |= STREAMTCP_INIT_FLAG_DROP_INVALID;
+    }
+
+    if ((ConfGetInt("stream.max-synack-queued", &value)) == 1) {
+        if (value >= 0 && value <= 255) {
+            stream_config.max_synack_queued = (uint8_t)value;
+        } else {
+            stream_config.max_synack_queued = (uint8_t)STREAMTCP_DEFAULT_MAX_SYNACK_QUEUED;
+        }
+    } else {
+        stream_config.max_synack_queued = (uint8_t)STREAMTCP_DEFAULT_MAX_SYNACK_QUEUED;
+    }
+    if (!quiet) {
+        SCLogConfig("stream \"max-synack-queued\": %"PRIu8, stream_config.max_synack_queued);
+    }
+
+    const char *temp_stream_reassembly_memcap_str;
+    if (ConfGetValue("stream.reassembly.memcap", &temp_stream_reassembly_memcap_str) == 1) {
+        uint64_t stream_reassembly_memcap_copy;
+        if (ParseSizeStringU64(temp_stream_reassembly_memcap_str,
+                               &stream_reassembly_memcap_copy) < 0) {
+            SCLogError(SC_ERR_SIZE_PARSE, "Error parsing "
+                                          "stream.reassembly.memcap "
+                                          "from conf file - %s.  Killing engine",
+                       temp_stream_reassembly_memcap_str);
+            exit(EXIT_FAILURE);
+        } else {
+            SC_ATOMIC_SET(stream_config.reassembly_memcap, stream_reassembly_memcap_copy);
+        }
+    } else {
+        SC_ATOMIC_SET(stream_config.reassembly_memcap , STREAMTCP_DEFAULT_REASSEMBLY_MEMCAP);
+    }
+
+    if (!quiet) {
+        SCLogConfig("stream.reassembly \"memcap\": %"PRIu64"",
+                    SC_ATOMIC_GET(stream_config.reassembly_memcap));
+    }
+
+    const char *temp_stream_reassembly_depth_str;
+    if (ConfGetValue("stream.reassembly.depth", &temp_stream_reassembly_depth_str) == 1) {
+        if (ParseSizeStringU32(temp_stream_reassembly_depth_str,
+                               &stream_config.reassembly_depth) < 0) {
+            SCLogError(SC_ERR_SIZE_PARSE, "Error parsing "
+                                          "stream.reassembly.depth "
+                                          "from conf file - %s.  Killing engine",
+                       temp_stream_reassembly_depth_str);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        stream_config.reassembly_depth = 0;
+    }
+
+    if (!quiet) {
+        SCLogConfig("stream.reassembly \"depth\": %"PRIu32"", stream_config.reassembly_depth);
+    }
+
+    int randomize = 0;
+    if ((ConfGetBool("stream.reassembly.randomize-chunk-size", &randomize)) == 0) {
+        /* randomize by default if value not set
+         * In ut mode we disable, to get predictible test results */
+        //if (!(RunmodeIsUnittests()))
+            randomize = 1;
+    }
+
+    if (randomize) {
+        const char *temp_rdrange;
+        if (ConfGetValue("stream.reassembly.randomize-chunk-range",
+                         &temp_rdrange) == 1) {
+            if (ParseSizeStringU16(temp_rdrange, &rdrange) < 0) {
+                SCLogError(SC_ERR_SIZE_PARSE, "Error parsing "
+                                              "stream.reassembly.randomize-chunk-range "
+                                              "from conf file - %s.  Killing engine",
+                           temp_rdrange);
+                exit(EXIT_FAILURE);
+            } else if (rdrange >= 100) {
+                FatalError(SC_ERR_FATAL,
+                           "stream.reassembly.randomize-chunk-range "
+                           "must be lower than 100");
+            }
+        }
+    }
+
+    const char *temp_stream_reassembly_toserver_chunk_size_str;
+    if (ConfGetValue("stream.reassembly.toserver-chunk-size",
+                     &temp_stream_reassembly_toserver_chunk_size_str) == 1) {
+        if (ParseSizeStringU16(temp_stream_reassembly_toserver_chunk_size_str,
+                               &stream_config.reassembly_toserver_chunk_size) < 0) {
+            SCLogError(SC_ERR_SIZE_PARSE, "Error parsing "
+                                          "stream.reassembly.toserver-chunk-size "
+                                          "from conf file - %s.  Killing engine",
+                       temp_stream_reassembly_toserver_chunk_size_str);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        stream_config.reassembly_toserver_chunk_size =
+                STREAMTCP_DEFAULT_TOSERVER_CHUNK_SIZE;
+    }
+
+    if (randomize) {
+        long int r = RandomGetWrap();
+        stream_config.reassembly_toserver_chunk_size +=
+                (int) (stream_config.reassembly_toserver_chunk_size *
+                       (r * 1.0 / RAND_MAX - 0.5) * rdrange / 100);
+    }
+    const char *temp_stream_reassembly_toclient_chunk_size_str;
+    if (ConfGetValue("stream.reassembly.toclient-chunk-size",
+                     &temp_stream_reassembly_toclient_chunk_size_str) == 1) {
+        if (ParseSizeStringU16(temp_stream_reassembly_toclient_chunk_size_str,
+                               &stream_config.reassembly_toclient_chunk_size) < 0) {
+            SCLogError(SC_ERR_SIZE_PARSE, "Error parsing "
+                                          "stream.reassembly.toclient-chunk-size "
+                                          "from conf file - %s.  Killing engine",
+                       temp_stream_reassembly_toclient_chunk_size_str);
+            exit(EXIT_FAILURE);
+        }
+    } else {
+        stream_config.reassembly_toclient_chunk_size =
+                STREAMTCP_DEFAULT_TOCLIENT_CHUNK_SIZE;
+    }
+
+    if (randomize) {
+        long int r = RandomGetWrap();
+        stream_config.reassembly_toclient_chunk_size +=
+                (int) (stream_config.reassembly_toclient_chunk_size *
+                       (r * 1.0 / RAND_MAX - 0.5) * rdrange / 100);
+    }
+    if (!quiet) {
+        SCLogConfig("stream.reassembly \"toserver-chunk-size\": %"PRIu16,
+                    stream_config.reassembly_toserver_chunk_size);
+        SCLogConfig("stream.reassembly \"toclient-chunk-size\": %"PRIu16,
+                    stream_config.reassembly_toclient_chunk_size);
+    }
+
+    int enable_raw = 1;
+    if (ConfGetBool("stream.reassembly.raw", &enable_raw) == 1) {
+        if (!enable_raw) {
+            stream_config.stream_init_flags = STREAMTCP_STREAM_FLAG_DISABLE_RAW;
+        }
+    } else {
+        enable_raw = 1;
+    }
+    if (!quiet)
+        SCLogConfig("stream.reassembly.raw: %s", enable_raw ? "enabled" : "disabled");
+
+    /* init the memcap/use tracking */
+    StreamTcpInitMemuse();
+
+    StreamTcpReassembleInit(quiet);
+
+    /* set the default free function and flow state function
+     * values. */
+    FlowSetProtoFreeFunc(IPPROTO_TCP, StreamTcpSessionClear);
+}
+
+void StreamTcpSessionClear(void *ssnptr)
+{
+    TcpSession *ssn = (TcpSession *)ssnptr;
+    if (ssn == NULL)
+        return;
+
+    StreamTcpSessionCleanup(ssn);
+
+    /* HACK: don't loose track of thread id */
+    PoolThreadReserved a = ssn->res;
+    memset(ssn, 0, sizeof(TcpSession));
+    ssn->res = a;
+
+    PoolThreadReturn(ssn_pool, ssn);
+
+    return ;
 }
 
 TmEcode StreamTcp (ThreadVars *tv, Packet *p, void *data, PacketQueueNoLock *pq){

@@ -1,5 +1,6 @@
 #include <unistd.h>
 #include <stdio.h>
+#include <sys/time.h>
 
 #include "tm-threads.h"
 #include "dpi/tm-queuehandlers.h"
@@ -550,4 +551,73 @@ TmEcode TmThreadsSlotProcessPkt(ThreadVars *tv, TmSlot *s, Packet *p)
   //TmThreadsHandleInjectedPackets(tv);
 
   return TM_ECODE_OK;
+}
+
+TmEcode TmThreadWaitOnThreadInit(void)
+{
+    uint16_t mgt_num = 0;
+    uint16_t ppt_num = 0;
+
+    struct timeval start_ts;
+    struct timeval cur_ts;
+    gettimeofday(&start_ts, NULL);
+
+    again:
+    SCMutexLock(&tv_root_lock);
+    for (int i = 0; i < TVT_MAX; i++) {
+        ThreadVars *tv = tv_root[i];
+        while (tv != NULL) {
+            if (TmThreadsCheckFlag(tv, (THV_CLOSED|THV_DEAD))) {
+                SCMutexUnlock(&tv_root_lock);
+
+                SCLogError(SC_ERR_THREAD_INIT, "thread \"%s\" failed to "
+                                               "initialize: flags %04x", tv->name,
+                           SC_ATOMIC_GET(tv->flags));
+                return TM_ECODE_FAILED;
+            }
+
+            if (!(TmThreadsCheckFlag(tv, THV_INIT_DONE))) {
+                SCMutexUnlock(&tv_root_lock);
+
+                gettimeofday(&cur_ts, NULL);
+                if ((cur_ts.tv_sec - start_ts.tv_sec) > 120) {
+                    SCLogError(SC_ERR_THREAD_INIT, "thread \"%s\" failed to "
+                                                   "initialize in time: flags %04x", tv->name,
+                               SC_ATOMIC_GET(tv->flags));
+                    return TM_ECODE_FAILED;
+                }
+
+                /* sleep a little to give the thread some
+                 * time to finish initialization */
+                usleep(100);
+                goto again;
+            }
+
+            if (TmThreadsCheckFlag(tv, THV_FAILED)) {
+                SCMutexUnlock(&tv_root_lock);
+                SCLogError(SC_ERR_THREAD_INIT, "thread \"%s\" failed to "
+                                               "initialize.", tv->name);
+                return TM_ECODE_FAILED;
+            }
+            if (TmThreadsCheckFlag(tv, THV_CLOSED)) {
+                SCMutexUnlock(&tv_root_lock);
+                SCLogError(SC_ERR_THREAD_INIT, "thread \"%s\" closed on "
+                                               "initialization.", tv->name);
+                return TM_ECODE_FAILED;
+            }
+
+            if (i == TVT_MGMT)
+                mgt_num++;
+            else if (i == TVT_PPT)
+                ppt_num++;
+
+            tv = tv->next;
+        }
+    }
+    SCMutexUnlock(&tv_root_lock);
+
+    SCLogNotice("all %"PRIu16" packet processing threads, %"PRIu16" management "
+                                                                  "threads initialized, engine started.", ppt_num, mgt_num);
+
+    return TM_ECODE_OK;
 }

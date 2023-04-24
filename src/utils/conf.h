@@ -26,9 +26,15 @@ void ConfInit(void);
 ConfNode *ConfNodeNew(void);
 void ConfNodeFree(ConfNode *node);
 
+int ConfSetFinal(const char *name, const char *val);
+
 ConfNode *ConfGetNode(const char *name);
+
 int ConfGet(const char *name, const char **vptr);
+int ConfGetValue(const char *name, const char **vptr);
 int ConfGetInt(const char *name, intmax_t *val);
+int ConfGetBool(const char *name, int *val);
+
 ConfNode *ConfNodeLookupChild(const ConfNode *node, const char *key);
 const char *ConfNodeLookupChildValue(const ConfNode *node, const char *key);
 void ConfNodePrune(ConfNode *node);

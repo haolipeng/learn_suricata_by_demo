@@ -2,6 +2,7 @@
 #define NET_THREAT_DETECT_UTIL_DEBUG_H
 
 #include <stdint.h>
+#include <stdlib.h>
 #include <pthread.h>
 #include "util-error.h"
 
@@ -171,6 +172,8 @@ void SCLogErr(int x, const char *file, const char *func, const int line,
 
 #define SCLogConfig(...) SCLog(SC_LOG_CONFIG, \
         __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+
+#define FatalErrorOnInit(x, ...) FatalError(x, __VA_ARGS__)
 
 /* Avoid the overhead of using the debugging subsystem, in production mode */
 #ifndef DEBUG

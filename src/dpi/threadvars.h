@@ -22,6 +22,12 @@
 #define THV_KILL_PKTACQ         BIT_U32(9)  /**< flag thread to stop packet acq */
 #define THV_FLOW_LOOP           BIT_U32(10) /**< thread is in flow shutdown loop */
 
+/** signal thread's capture method to create a fake packet to force through
+ *  the engine. This is to force timely handling of maintenance taks like
+ *  rule reloads even if no packets are read by the capture method. */
+#define THV_CAPTURE_INJECT_PKT  BIT_U32(11)
+#define THV_DEAD                BIT_U32(12) /**< thread has been joined with pthread_join() */
+
 typedef struct ThreadVars_ {
     pthread_t t;
     void *(*tm_func)(void *);

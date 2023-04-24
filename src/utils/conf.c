@@ -262,6 +262,22 @@ void ConfNodeFree(ConfNode *node)
     SCFree(node);
 }
 
+int ConfSetFinal(const char *name, const char *val)
+{
+  ConfNode *node = ConfGetNodeOrCreate(name, 1);
+  if (node == NULL) {
+    return 0;
+  }
+  if (node->val != NULL)
+    SCFree(node->val);
+  node->val = SCStrdup(val);
+  if (unlikely(node->val == NULL)) {
+    return 0;
+  }
+  node->final = 1;
+  return 1;
+}
+
 ConfNode *ConfGetNode(const char *name)
 {
   ConfNode *node = root;
@@ -299,6 +315,34 @@ int ConfGet(const char *name, const char **vptr)
   }
 }
 
+int ConfGetValue(const char *name, const char **vptr)
+{
+  ConfNode *node;
+
+  if (name == NULL) {
+    SCLogError(SC_ERR_INVALID_ARGUMENT,"parameter 'name' is NULL");
+    return -2;
+  }
+
+  node = ConfGetNode(name);
+
+  if (node == NULL) {
+    SCLogDebug("failed to lookup configuration parameter '%s'", name);
+    return 0;
+  }
+  else {
+
+    if (node->val == NULL) {
+      SCLogDebug("value for configuration parameter '%s' is NULL", name);
+      return -1;
+    }
+
+    *vptr = node->val;
+    return 1;
+  }
+
+}
+
 int ConfGetInt(const char *name, intmax_t *val)
 {
   const char *strval = NULL;
@@ -328,6 +372,19 @@ int ConfGetInt(const char *name, intmax_t *val)
   }
 
   *val = tmpint;
+  return 1;
+}
+
+int ConfGetBool(const char *name, int *val)
+{
+  const char *strval = NULL;
+
+  *val = 0;
+  if (ConfGetValue(name, &strval) != 1)
+    return 0;
+
+  *val = ConfValIsTrue(strval);
+
   return 1;
 }
 

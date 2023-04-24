@@ -5,6 +5,7 @@
 #include "decode/decode.h"
 #include "stream-tcp-reassemble.h"
 #include "dpi/tm-threads-common.h"
+#include "utils/util-exception-policy.h"
 
 #define STREAM_VERBOSE    FALSE
 /* Flag to indicate that the checksum validation for the stream engine
@@ -40,9 +41,9 @@ typedef struct TcpStreamCnf_ {
 
   bool streaming_log_api;
 
-  //enum ExceptionPolicy ssn_memcap_policy;
-  //enum ExceptionPolicy reassembly_memcap_policy;
-  //enum ExceptionPolicy midstream_policy;
+  enum ExceptionPolicy ssn_memcap_policy;
+  enum ExceptionPolicy reassembly_memcap_policy;
+  enum ExceptionPolicy midstream_policy;
 
   StreamingBufferConfig sbcnf;
 } TcpStreamCnf;

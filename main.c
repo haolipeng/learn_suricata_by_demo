@@ -6,17 +6,20 @@
 #include <sys/time.h>
 
 #include "base.h"
+#include "dpi/conf-yaml-loader.h"
+#include "dpi/runmodes.h"
+#include "dpi/source-af-packet.h"
+#include "dpi/tm-modules.h"
+#include "dpi/tm-queuehandlers.h"
 #include "flow/flow-manager.h"
+#include "flow/flow-worker.h"
 #include "packet.h"
 #include "pcap.h"
-#include "utils/util-debug.h"
-#include "dpi/tm-modules.h"
-#include "dpi/source-af-packet.h"
-#include "flow/flow-worker.h"
-#include "dpi/runmodes.h"
-#include "dpi/tm-queuehandlers.h"
-#include "dpi/conf-yaml-loader.h"
 #include "utils/conf.h"
+#include "utils/util-debug.h"
+#include "utils/util-device.h"
+#include "dpi/main.h"
+#include "reassemble/stream-tcp.h"
 
 #define DEFAULT_CONF_FILE "/etc/suricata/suricata.yaml"
 #define DEFAULT_MAX_PENDING_PACKETS 1024
@@ -32,6 +35,9 @@ __thread int THREAD_ID;
 
 struct timeval g_now;
 
+/** Suricata instance */
+SCInstance suricata;
+
 static void help(const char *prog)
 {
     printf("%s:\n", prog);
@@ -42,7 +48,28 @@ static void help(const char *prog)
     printf("  p: pcap file or directory\n");
 }
 
-void parse_cmd_line(int argc, char *argv[]){
+static int ParseCommandLineAfpacket(enum RunModes run_mode, const char *in_arg)
+{
+  if (run_mode == RUNMODE_UNKNOWN) {
+    run_mode = RUNMODE_AFP_DEV;
+    if (in_arg) {
+      LiveRegisterDeviceName(in_arg);
+    }
+  } else if (run_mode == RUNMODE_AFP_DEV) {
+    if (in_arg) {
+      LiveRegisterDeviceName(in_arg);
+    } else {
+      SCLogInfo("Multiple af-packet option without interface on each is useless");
+    }
+  } else {
+    SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode "
+                                         "has been specified");
+    return TM_ECODE_FAILED;
+  }
+  return TM_ECODE_OK;
+}
+
+void ParseCommandLine(int argc, char *argv[]){
     int arg = 0;
 
     while (arg != -1) {
@@ -59,6 +86,9 @@ void parse_cmd_line(int argc, char *argv[]){
                 break;
             case 'i':
                 g_in_iface = strdup(optarg);//设置网口
+                if (ParseCommandLineAfpacket(RUNMODE_UNKNOWN, g_in_iface) != TM_ECODE_OK) {
+                  //TODO:need log
+                }
                 break;
             case 'c':
                 g_virtual_iface = strdup(optarg);//TODO:抓取虚拟接口
@@ -91,12 +121,24 @@ void RegisterAllModules(void)
     TmModuleFlowWorkerRegister();
 }
 
-static TmEcode LoadYamlConfig(const char* conf_filename)
-{
-    if (conf_filename == NULL)
-        conf_filename = DEFAULT_CONF_FILE;
+int InitGlobal(void){
+    //1.初始化日志系统
+    SCLogInitLogModule(NULL);
 
-    if (ConfYamlLoadFile(conf_filename) != 0) {
+    //2.Register runmodes
+    RunModeRegisterRunModes();
+
+    //3.初始化Config系统
+    ConfInit();
+    return 0;
+}
+
+static TmEcode LoadYamlConfig(SCInstance *suri)
+{
+    if (suri->conf_filename == NULL)
+        suri->conf_filename = DEFAULT_CONF_FILE;
+
+    if (ConfYamlLoadFile(suri->conf_filename) != 0) {
         /* Error already displayed. */
         return (TM_ECODE_FAILED);
     }
@@ -126,25 +168,76 @@ static TmEcode ParseInterfacesList(const int runmode, char *pcap_dev)
     return (TM_ECODE_OK);
 }
 
-int main(int argc, char *argv[])
+void PreRunInit(const int runmode)
 {
-    //1.解析程序命令行参数
-    parse_cmd_line(argc, argv);
+    //DefragInit();
+    FlowInitConfig(FLOW_QUIET);
+    StreamTcpInitConfig(STREAM_VERBOSE);
+}
 
-    //2.初始化日志系统
-    SCLogInitLogModule(NULL);
+int PostConfLoadedSetup(SCInstance *suri)
+{
+    if (suri->runmode_custom_mode) {
+        ConfSet("runmode", suri->runmode_custom_mode);
+    }
 
-    //3.初始化Config系统
-    ConfInit();
+    //TODO:need to do
+    //if (ConfigGetCaptureValue(suri) != TM_ECODE_OK) {
+    //    SCReturnInt(TM_ECODE_FAILED);
+    //}
 
-    //3.Register runmodes
-    RunModeRegisterRunModes();
+    TmqhSetup();
 
-    //4.register all modules
     RegisterAllModules();
 
+    TmModuleRunInit();
+
+    /*if (InitSignalHandler(suri) != TM_ECODE_OK)
+        return TM_ECODE_FAILED;*/
+
+    LiveDeviceFinalize();
+
+    PreRunInit(suri->run_mode);
+
+    return TM_ECODE_OK;
+}
+
+int main(int argc, char *argv[])
+{
     int ret = 0;
-    //5.判断不同运行模式
+    //1.Global init
+    InitGlobal();
+
+    //3.解析程序命令行参数
+    ParseCommandLine(argc, argv);
+
+    /* Load yaml configuration file if provided. */
+    if (LoadYamlConfig(&suricata) != TM_ECODE_OK) {
+      exit(EXIT_FAILURE);
+    }
+
+    if (ParseInterfacesList(suricata.aux_run_mode, suricata.pcap_dev) != TM_ECODE_OK) {
+      exit(EXIT_FAILURE);
+    }
+
+    if (PostConfLoadedSetup(&suricata) != TM_ECODE_OK) {
+        exit(EXIT_FAILURE);
+    }
+
+    //TODO:use only single run mode for test,need modify
+    RunModeDispatch(suricata.run_mode, suricata.runmode_custom_mode);
+    //RunModeDispatch(RUNMODE_AFP_DEV,"single");
+
+    if (TmThreadWaitOnThreadInit() == TM_ECODE_FAILED) {
+        FatalError(SC_ERR_FATAL, "Engine initialization failed, "
+                                 "aborting...");
+    }
+
+    while(1){
+        sleep(1);
+    }
+
+    //6.判断不同运行模式
     /*if(NULL != g_pcap_path){
         ret = pcap_run(g_pcap_path);
     }else{
@@ -156,16 +249,7 @@ int main(int argc, char *argv[])
             ret = net_run(g_virtual_iface);
         }
     }*/
-
-    TmqhSetup();
-
-    //TODO:use only single run mode for test,need modify
-    RunModeDispatch(RUNMODE_AFP_DEV,"single");
-
-    while(1){
-        sleep(1);
-    }
-
+    TmModuleRunInit();
     printf("program is almost shutdown");
     return ret;
 }

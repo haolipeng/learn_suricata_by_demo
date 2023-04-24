@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include "streaming-buffer.h"
 #include "dpi/common.h"
+#include "utils/util-pool-thread.h"
 
 #define STREAMTCP_QUEUE_FLAG_TS     0x01
 #define STREAMTCP_QUEUE_FLAG_WS     0x02
@@ -213,7 +214,7 @@ enum TcpState
 }
 
 typedef struct TcpSession_ {
-    //PoolThreadReserved res;             //PoolThread使用的的id号 modify by haolipeng
+    PoolThreadReserved res;             //PoolThread使用的的id号 modify by haolipeng
     uint8_t state:4;                        /**< tcp state from state enum 会话状态*/
     uint8_t pstate:4;                       /**< previous state */
     uint8_t queue_len;                      /**< length of queue list below */
