@@ -5,6 +5,7 @@
 #include "utils/conf.h"
 #include "flow/flow-manager.h"
 #include "runmode-pcap-file.h"
+#include "utils/util-mem.h"
 
 typedef struct RunMode_ {
     /* the runmode type */
@@ -21,6 +22,7 @@ typedef struct RunModes_ {
 } RunModes;
 
 static RunModes runmodes[RUNMODE_USER_MAX];
+static char *active_runmode;
 
 void RunModeRegisterNewRunMode(enum RunModes runmode,
                                const char *name,
@@ -63,6 +65,11 @@ void RunModeRegisterRunModes(void)
     return;
 }
 
+char *RunmodeGetActive(void)
+{
+    return active_runmode;
+}
+
 static RunMode *RunModeGetCustomMode(enum RunModes runmode, const char *custom_mode)
 {
     if (runmode < RUNMODE_USER_MAX) {
@@ -90,6 +97,41 @@ static const char *RunModeTranslateModeToName(int runmode)
 
 void RunModeDispatch(int runmode, const char *custom_mode)
 {
+    char *local_custom_mode = NULL;
+
+    if (custom_mode == NULL) {
+        const char *val = NULL;
+        if (ConfGet("runmode", &val) != 1) {
+            custom_mode = NULL;
+        } else {
+            custom_mode = val;
+        }
+    }
+
+    if (custom_mode == NULL || strcmp(custom_mode, "auto") == 0) {
+        switch (runmode) {
+            case RUNMODE_PCAP_FILE:
+                custom_mode = RunModeFilePcapGetDefaultMode();
+                break;
+            case RUNMODE_AFP_DEV:
+                custom_mode = RunModeAFPGetDefaultMode();
+                break;
+            default:
+                FatalError(SC_ERR_FATAL, "Unknown runtime mode. Aborting");
+        }
+    } else { /* if (custom_mode == NULL) */
+        /* Add compability with old 'worker' name */
+        if (!strcmp("worker", custom_mode)) {
+            SCLogWarning(SC_ERR_RUNMODE, "'worker' mode have been renamed "
+                                         "to 'workers', please modify your setup.");
+            local_custom_mode = SCStrdup("workers");
+            if (unlikely(local_custom_mode == NULL)) {
+                FatalError(SC_ERR_FATAL, "Unable to dup custom mode");
+            }
+            custom_mode = local_custom_mode;
+        }
+    }
+
     RunMode *mode = RunModeGetCustomMode(runmode, custom_mode);
     if (mode == NULL) {
         SCLogError(SC_ERR_RUNMODE, "The custom type \"%s\" doesn't exist "
@@ -99,17 +141,30 @@ void RunModeDispatch(int runmode, const char *custom_mode)
         exit(EXIT_FAILURE);
     }
 
-    if(NULL == mode){
-        return ;
+    /* Export the custom mode */
+    if (active_runmode) {
+        SCFree(active_runmode);
+    }
+    active_runmode = SCStrdup(custom_mode);
+    if (unlikely(active_runmode == NULL)) {
+        FatalError(SC_ERR_FATAL, "Unable to dup active mode");
     }
 
+    /*if (strcasecmp(active_runmode, "autofp") == 0) {
+        TmqhFlowPrintAutofpHandler();
+    }*/
+
     mode->RunModeFunc();
+
+    if (local_custom_mode != NULL)
+        SCFree(local_custom_mode);
+
+    /* Check if the alloted queues have at least 1 reader and writer */
+    //TmValidateQueueState();
 
     if (runmode != RUNMODE_UNIX_SOCKET) {
         /* spawn management threads */
         FlowManagerThreadSpawn();
         FlowRecyclerThreadSpawn();
     }
-
-    return ;
 }

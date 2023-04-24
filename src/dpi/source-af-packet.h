@@ -5,6 +5,11 @@
 #include "utils/util-atomic.h"
 #include <stdint.h>
 
+#ifndef HAVE_PACKET_FANOUT /* not defined if linux/if_packet.h trying to force */
+#define HAVE_PACKET_FANOUT 1
+#define PACKET_FANOUT                  18
+#endif
+
 /* value for flags */
 #define AFP_RING_MODE (1<<0)
 #define AFP_ZERO_COPY (1<<1)
@@ -35,6 +40,43 @@
     (afpv)->mpeer = NULL;                 \
 } while(0)
 
+typedef enum {
+    CHECKSUM_VALIDATION_DISABLE,
+    CHECKSUM_VALIDATION_ENABLE,
+    CHECKSUM_VALIDATION_AUTO,
+    CHECKSUM_VALIDATION_RXONLY,
+    CHECKSUM_VALIDATION_KERNEL,
+} ChecksumValidationMode;
+
+typedef struct AFPIfaceConfig_
+{
+    char iface[AFP_IFACE_NAME_LENGTH];
+    /* number of threads */
+    int threads;
+    /* socket buffer size */
+    int buffer_size;
+    /* ring size in number of packets */
+    int ring_size;
+    /* block size for tpacket_v3 in */
+    int block_size;
+    /* block timeout for tpacket_v3 in milliseconds */
+    int block_timeout;
+    /* cluster param */
+    uint16_t cluster_id;
+    int cluster_type;
+    /* promisc mode */
+    int promisc;
+    /* misc use flags including ring mode */
+    unsigned int flags;
+    int copy_mode;
+    ChecksumValidationMode checksum_mode;
+    const char *bpf_filter;
+
+    const char *out_iface;
+    SC_ATOMIC_DECLARE(unsigned int, ref);
+    void (*DerefFunc)(void *);
+} AFPIfaceConfig;
+
 typedef struct AFPPeer_ {
   SC_ATOMIC_DECLARE(int, socket);
   SC_ATOMIC_DECLARE(int, sock_usage);
@@ -61,5 +103,11 @@ typedef struct AFPPacketVars_
 
 void TmModuleReceiveAFPRegister (void);
 void TmModuleDecodeAFPRegister (void);
+
+int AFPGetLinkType(const char *ifname);
+
+int AFPIsFanoutSupported(uint16_t cluster_id);
+
+
 
 #endif //NET_THREAT_DETECT_SOURCE_AF_PACKET_H

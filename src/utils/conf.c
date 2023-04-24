@@ -103,6 +103,121 @@ int ConfSet(const char *name, const char *val)
     return 1;
 }
 
+int ConfGetChildValue(const ConfNode *base, const char *name, const char **vptr)
+{
+    ConfNode *node = ConfNodeLookupChild(base, name);
+
+    if (node == NULL) {
+        SCLogDebug("failed to lookup configuration parameter '%s'", name);
+        return 0;
+    }
+    else {
+        *vptr = node->val;
+        return 1;
+    }
+}
+
+int ConfGetChildValueWithDefault(const ConfNode *base, const ConfNode *dflt,
+                                 const char *name, const char **vptr)
+{
+    int ret = ConfGetChildValue(base, name, vptr);
+    /* Get 'default' value */
+    if (ret == 0 && dflt) {
+        return ConfGetChildValue(dflt, name, vptr);
+    }
+    return ret;
+}
+
+int ConfValIsTrue(const char *val)
+{
+    const char *trues[] = {"1", "yes", "true", "on"};
+    size_t u;
+
+    for (u = 0; u < sizeof(trues) / sizeof(trues[0]); u++) {
+        if (strcasecmp(val, trues[u]) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int ConfValIsFalse(const char *val)
+{
+    const char *falses[] = {"0", "no", "false", "off"};
+    size_t u;
+
+    for (u = 0; u < sizeof(falses) / sizeof(falses[0]); u++) {
+        if (strcasecmp(val, falses[u]) == 0) {
+            return 1;
+        }
+    }
+
+    return 0;
+}
+
+int ConfGetChildValueBool(const ConfNode *base, const char *name, int *val)
+{
+    const char *strval = NULL;
+
+    *val = 0;
+    if (ConfGetChildValue(base, name, &strval) == 0)
+        return 0;
+
+    *val = ConfValIsTrue(strval);
+
+    return 1;
+}
+
+
+int ConfGetChildValueInt(const ConfNode *base, const char *name, intmax_t *val)
+{
+    const char *strval = NULL;
+    intmax_t tmpint;
+    char *endptr;
+
+    if (ConfGetChildValue(base, name, &strval) == 0)
+        return 0;
+    errno = 0;
+    tmpint = strtoimax(strval, &endptr, 0);
+    if (strval[0] == '\0' || *endptr != '\0') {
+        SCLogError(SC_ERR_INVALID_YAML_CONF_ENTRY, "malformed integer value "
+                                                   "for %s with base %s: '%s'", name, base->name, strval);
+        return 0;
+    }
+    if (errno == ERANGE && (tmpint == INTMAX_MAX || tmpint == INTMAX_MIN)) {
+        SCLogError(SC_ERR_INVALID_YAML_CONF_ENTRY, "integer value for %s with "
+                                                   " base %s out of range: '%s'", name, base->name, strval);
+        return 0;
+    }
+
+    *val = tmpint;
+    return 1;
+
+}
+
+int ConfGetChildValueIntWithDefault(const ConfNode *base, const ConfNode *dflt,
+                                    const char *name, intmax_t *val)
+{
+    int ret = ConfGetChildValueInt(base, name, val);
+    /* Get 'default' value */
+    if (ret == 0 && dflt) {
+        return ConfGetChildValueInt(dflt, name, val);
+    }
+    return ret;
+}
+
+int ConfGetChildValueBoolWithDefault(const ConfNode *base, const ConfNode *dflt,
+                                     const char *name, int *val)
+{
+    int ret = ConfGetChildValueBool(base, name, val);
+    /* Get 'default' value */
+    if (ret == 0 && dflt) {
+        return ConfGetChildValueBool(dflt, name, val);
+    }
+    return ret;
+}
+
 ConfNode *ConfNodeNew(void)
 {
     ConfNode *new;

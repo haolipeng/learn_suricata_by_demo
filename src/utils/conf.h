@@ -33,5 +33,14 @@ void ConfNodePrune(ConfNode *node);
 ConfNode *ConfGetRootNode(void);
 int ConfSet(const char *name, const char *val);
 
+int ConfValIsFalse(const char *val);
+int ConfValIsTrue(const char *val);
+int ConfGetChildValue(const ConfNode *base, const char *name, const char **vptr);
+int ConfGetChildValueBool(const ConfNode *base, const char *name, int *val);
+int ConfGetChildValueInt(const ConfNode *base, const char *name, intmax_t *val);
+
+int ConfGetChildValueWithDefault(const ConfNode *base, const ConfNode *dflt, const char *name, const char **vptr);
+int ConfGetChildValueIntWithDefault(const ConfNode *base, const ConfNode *dflt, const char *name, intmax_t *val);
+int ConfGetChildValueBoolWithDefault(const ConfNode *base, const ConfNode *dflt, const char *name, int *val);
 size_t strlcpy(char *dst, const char *src, size_t siz);
 #endif // NET_THREAT_DETECT_CONF_H

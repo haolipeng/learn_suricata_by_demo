@@ -1329,17 +1329,6 @@ static int AFPCreateSocket(AFPThreadVars *ptv, char *devname, int verbose)
   }
 #endif
 
-#ifdef HAVE_PACKET_EBPF
-  if (ptv->cluster_type == PACKET_FANOUT_EBPF) {
-    r = SockFanoutSeteBPF(ptv);
-    if (r < 0) {
-      SCLogError(SC_ERR_AFP_CREATE,
-                 "Coudn't set EBPF, error %s",
-                 strerror(errno));
-      goto socket_err;
-    }
-  }
-#endif
 
   if (ptv->flags & AFP_RING_MODE) {
     ret = AFPSetupRing(ptv, devname);
@@ -1378,6 +1367,45 @@ socket_err:
 
 error:
   return -ret;
+}
+
+int AFPGetLinkType(const char *ifname)
+{
+    int ltype;
+
+    int fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    if (fd == -1) {
+        SCLogError(SC_ERR_AFP_CREATE, "Couldn't create a AF_PACKET socket, error %s", strerror(errno));
+        return LINKTYPE_RAW;
+    }
+
+    ltype =  AFPGetDevLinktype(fd, ifname);
+    close(fd);
+
+    return ltype;
+}
+
+int AFPIsFanoutSupported(uint16_t cluster_id)
+{
+#ifdef HAVE_PACKET_FANOUT
+    int fd = socket(AF_PACKET, SOCK_RAW, htons(ETH_P_ALL));
+    if (fd < 0)
+        return 0;
+
+    uint32_t mode = PACKET_FANOUT_HASH | PACKET_FANOUT_FLAG_DEFRAG;
+    uint32_t option = (mode << 16) | cluster_id;
+    int r = setsockopt(fd, SOL_PACKET, PACKET_FANOUT,(void *)&option, sizeof(option));
+    close(fd);
+
+    if (r < 0) {
+        SCLogError(SC_ERR_INVALID_VALUE, "fanout not supported by kernel: "
+                "Kernel too old or cluster-id %d already in use.", cluster_id);
+        return 0;
+    }
+    return 1;
+#else
+    return 0;
+#endif
 }
 
 TmEcode ReceiveAFPThreadDeinit(ThreadVars *tv, void *data)

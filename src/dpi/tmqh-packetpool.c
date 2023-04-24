@@ -9,6 +9,7 @@
 static uint32_t max_pending_return_packets = MAX_PENDING_RETURN_PACKETS;
 
 thread_local PktPool thread_pkt_pool;
+extern intmax_t max_pending_packets;
 
 static inline PktPool *GetThreadPacketPool(void)
 {
@@ -238,7 +239,6 @@ void PacketPoolInitEmpty(void)
 void PacketPoolInit(void)
 {
     extern intmax_t max_pending_packets;
-
     PktPool *my_pool = GetThreadPacketPool();
 
 #ifdef DEBUG_VALIDATION
