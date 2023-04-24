@@ -154,6 +154,9 @@ void SCLogErr(int x, const char *file, const char *func, const int line,
         __FILE__, __FUNCTION__, __LINE__, \
         err_code, __VA_ARGS__)
 
+#define SCLogInfo(...) SCLog(SC_LOG_INFO, \
+        __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
+
 #define SCLogPerf(...) SCLog(SC_LOG_PERF, \
         __FILE__, __FUNCTION__, __LINE__, __VA_ARGS__)
 

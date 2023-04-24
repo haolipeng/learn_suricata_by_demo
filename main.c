@@ -15,7 +15,9 @@
 #include "flow/flow-worker.h"
 #include "dpi/runmodes.h"
 #include "dpi/tm-queuehandlers.h"
+#include "dpi/conf-yaml-loader.h"
 
+#define DEFAULT_CONF_FILE "/etc/suricata/suricata.yaml"
 #define DEFAULT_MAX_PENDING_PACKETS 1024
 intmax_t max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
 
@@ -86,6 +88,19 @@ void RegisterAllModules(void)
 
     /* flow worker */
     TmModuleFlowWorkerRegister();
+}
+
+static TmEcode LoadYamlConfig(const char* conf_filename)
+{
+    if (conf_filename == NULL)
+        conf_filename = DEFAULT_CONF_FILE;
+
+    if (ConfYamlLoadFile(conf_filename) != 0) {
+        /* Error already displayed. */
+        return (TM_ECODE_FAILED);
+    }
+
+    return (TM_ECODE_OK);
 }
 
 int main(int argc, char *argv[])
