@@ -1,7 +1,7 @@
 #ifndef __THREADS_H__
 #define __THREADS_H__
 
-#define TLS_GNU 1 //TODO:for test
+#include "autoconf.h"
 
 #if defined(TLS_C11)
 #define thread_local _Thread_local

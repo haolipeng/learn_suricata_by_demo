@@ -1,23 +1,27 @@
+#include <errno.h>
+#include <linux/if_ether.h>
+#include <linux/if_packet.h>
+#include <sys/time.h>
+#include <unistd.h>
+#include <net/if.h>
+#include <net/if_arp.h>
+#include <sys/ioctl.h>
+#include <sys/mman.h>
+#include <sys/poll.h>
+
+#define __USE_GNU
+#include <bits/poll.h>
+#include "autoconf.h"
+
 #include "source-af-packet.h"
 #include "decode/decode-vlan.h"
 #include "tm-modules.h"
 #include "tm-threads-common.h"
 #include "tmqh-packetpool.h"
-#include "util-device.h"
 #include "utils/conf.h"
-#include <errno.h>
-#include <linux/if_ether.h>
-#include <linux/if_packet.h>
-#include <sys/poll.h>
-#include <sys/time.h>
-#include <unistd.h>
-
-#define __USE_GNU
-#include <bits/poll.h>
-#include <net/if.h>
-#include <net/if_arp.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
+#include "utils/util-mem.h"
+#include "utils/util-device.h"
+#include "utils/util-ioctl.h"
 
 #define AFP_IFACE_NAME_LENGTH 48
 
@@ -79,11 +83,6 @@ typedef struct AFPThreadVars_
 
   ChecksumValidationMode checksum_mode;
 
-  /* references to packet and drop counters */
-  uint16_t capture_kernel_packets;
-  uint16_t capture_kernel_drops;
-  uint16_t capture_errors;
-
   /* handle state */
   uint8_t afp_state;
   uint8_t copy_mode;
@@ -107,8 +106,6 @@ typedef struct AFPThreadVars_
   int buffer_size;
   /* Filter */
   const char *bpf_filter;
-  int ebpf_lb_fd;
-  int ebpf_filter_fd;
 
   int promisc;
 
@@ -134,22 +131,235 @@ typedef struct AFPThreadVars_
   unsigned int ring_buflen;
   uint8_t *ring_buf;
 
-  uint8_t xdp_mode;
-
 } AFPThreadVars;
 
 static void AFPReleaseDataFromRing(Packet *p);
 static int AFPCreateSocket(AFPThreadVars *ptv, char *devname, int verbose);
 
+
+typedef struct AFPPeersList_ {
+    TAILQ_HEAD(, AFPPeer_) peers; /**< Head of list of fragments. */
+    int cnt;
+    int peered;
+    int turn; /**< Next value for initialisation order */
+    SC_ATOMIC_DECLARE(int, reached); /**< Counter used to synchronize start */
+} AFPPeersList;
+AFPPeersList peerslist;
+
+TmEcode AFPPeersListInit(void)
+{
+    TAILQ_INIT(&peerslist.peers);
+    peerslist.peered = 0;
+    peerslist.cnt = 0;
+    peerslist.turn = 0;
+    SC_ATOMIC_INIT(peerslist.reached);
+    (void) SC_ATOMIC_SET(peerslist.reached, 0);
+    return TM_ECODE_OK;
+}
+
+static int AFPPeersListWaitTurn(AFPPeer *peer)
+{
+    /* If turn is zero, we already have started threads once */
+    if (peerslist.turn == 0)
+        return 0;
+
+    if (peer->turn == SC_ATOMIC_GET(peerslist.reached))
+        return 0;
+    return 1;
+}
+
+static int AFPPeersListStarted(void)
+{
+    return !peerslist.turn;
+}
+
+static int AFPGetIfnumByDev(int fd, const char *ifname, int verbose)
+{
+    struct ifreq ifr;
+
+    memset(&ifr, 0, sizeof(ifr));
+    strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
+
+    if (ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
+        if (verbose)
+            SCLogError(SC_ERR_AFP_CREATE, "Unable to find iface %s: %s",
+                       ifname, strerror(errno));
+        return -1;
+    }
+
+    return ifr.ifr_ifindex;
+}
+
+/**
+ * \brief Update the peer.
+ *
+ * Update the AFPPeer of a thread ie set new state, socket number
+ * or iface index.
+ *
+ */
+static void AFPPeerUpdate(AFPThreadVars *ptv)
+{
+    if (ptv->mpeer == NULL) {
+        return;
+    }
+    (void)SC_ATOMIC_SET(ptv->mpeer->if_idx, AFPGetIfnumByDev(ptv->socket, ptv->iface, 0));
+    (void)SC_ATOMIC_SET(ptv->mpeer->socket, ptv->socket);
+    (void)SC_ATOMIC_SET(ptv->mpeer->state, ptv->afp_state);
+}
+
+static TmEcode AFPPeersListAdd(AFPThreadVars *ptv)
+{
+    AFPPeer *peer = SCMalloc(sizeof(AFPPeer));
+    AFPPeer *pitem;
+    int mtu, out_mtu;
+
+    if (unlikely(peer == NULL)) {
+        return (TM_ECODE_FAILED);
+    }
+    memset(peer, 0, sizeof(AFPPeer));
+    SC_ATOMIC_INIT(peer->socket);
+    SC_ATOMIC_INIT(peer->sock_usage);
+    SC_ATOMIC_INIT(peer->if_idx);
+    SC_ATOMIC_INIT(peer->state);
+    peer->flags = ptv->flags;
+    peer->turn = peerslist.turn++;
+
+    if (peer->flags & AFP_SOCK_PROTECT) {
+        SCMutexInit(&peer->sock_protect, NULL);
+    }
+
+    (void)SC_ATOMIC_SET(peer->sock_usage, 0);
+    (void)SC_ATOMIC_SET(peer->state, AFP_STATE_DOWN);
+    strlcpy(peer->iface, ptv->iface, AFP_IFACE_NAME_LENGTH);
+    ptv->mpeer = peer;
+    /* add element to iface list */
+    TAILQ_INSERT_TAIL(&peerslist.peers, peer, next);
+
+    if (ptv->copy_mode != AFP_COPY_MODE_NONE) {
+        peerslist.cnt++;
+
+        /* Iter to find a peer */
+        TAILQ_FOREACH(pitem, &peerslist.peers, next) {
+            if (pitem->peer)
+                continue;
+            if (strcmp(pitem->iface, ptv->out_iface))
+                continue;
+            peer->peer = pitem;
+            pitem->peer = peer;
+            mtu = GetIfaceMTU(ptv->iface);
+            out_mtu = GetIfaceMTU(ptv->out_iface);
+            if (mtu != out_mtu) {
+                SCLogError(SC_ERR_AFP_CREATE,
+                           "MTU on %s (%d) and %s (%d) are not equal, "
+                           "transmission of packets bigger than %d will fail.",
+                           ptv->iface, mtu,
+                           ptv->out_iface, out_mtu,
+                           (out_mtu > mtu) ? mtu : out_mtu);
+            }
+            peerslist.peered += 2;
+            break;
+        }
+    }
+
+    AFPPeerUpdate(ptv);
+
+    return (TM_ECODE_OK);
+}
+
 TmEcode ReceiveAFPThreadInit(ThreadVars *tv, const void *initdata, void **data)
 {
-    DecodeThreadVars *dtv = NULL;
-    dtv = DecodeThreadVarsAlloc(tv);
+    AFPIfaceConfig *afpconfig = (AFPIfaceConfig *)initdata;
 
-    if (dtv == NULL)
+    if (initdata == NULL) {
+        SCLogError(SC_ERR_INVALID_ARGUMENT, "initdata == NULL");
         return TM_ECODE_FAILED;
+    }
 
-    *data = (void *)dtv;
+    AFPThreadVars *ptv = SCMalloc(sizeof(AFPThreadVars));
+    if (unlikely(ptv == NULL)) {
+        afpconfig->DerefFunc(afpconfig);
+        return TM_ECODE_FAILED;
+    }
+    memset(ptv, 0, sizeof(AFPThreadVars));
+
+    ptv->tv = tv;
+    ptv->cooked = 0;
+
+    strlcpy(ptv->iface, afpconfig->iface, AFP_IFACE_NAME_LENGTH);
+    ptv->iface[AFP_IFACE_NAME_LENGTH - 1]= '\0';
+
+    ptv->livedev = LiveGetDevice(ptv->iface);
+    if (ptv->livedev == NULL) {
+        SCLogError(SC_ERR_INVALID_VALUE, "Unable to find Live device");
+        SCFree(ptv);
+        return (TM_ECODE_FAILED);
+    }
+
+    ptv->buffer_size = afpconfig->buffer_size;
+    ptv->ring_size = afpconfig->ring_size;
+    ptv->block_size = afpconfig->block_size;
+    ptv->block_timeout = afpconfig->block_timeout;
+
+    ptv->promisc = afpconfig->promisc;
+    ptv->checksum_mode = afpconfig->checksum_mode;
+    ptv->bpf_filter = NULL;
+
+    ptv->threads = 1;
+#ifdef HAVE_PACKET_FANOUT
+    ptv->cluster_type = PACKET_FANOUT_LB;
+    ptv->cluster_id = 1;
+    /* We only set cluster info if the number of reader threads is greater than 1 */
+    if (afpconfig->threads > 1) {
+        ptv->cluster_id = afpconfig->cluster_id;
+        ptv->cluster_type = afpconfig->cluster_type;
+        ptv->threads = afpconfig->threads;
+    }
+#endif
+    ptv->flags = afpconfig->flags;
+
+    if (afpconfig->bpf_filter) {
+        ptv->bpf_filter = afpconfig->bpf_filter;
+    }
+
+    ptv->copy_mode = afpconfig->copy_mode;
+    if (ptv->copy_mode != AFP_COPY_MODE_NONE) {
+        strlcpy(ptv->out_iface, afpconfig->out_iface, AFP_IFACE_NAME_LENGTH);
+        ptv->out_iface[AFP_IFACE_NAME_LENGTH - 1]= '\0';
+        /* Warn about BPF filter consequence */
+        if (ptv->bpf_filter) {
+            SCLogWarning(SC_WARN_UNCOMMON, "Enabling a BPF filter in IPS mode result"
+                                           " in dropping all non matching packets.");
+        }
+    }
+
+
+    if (AFPPeersListAdd(ptv) == TM_ECODE_FAILED) {
+        SCFree(ptv);
+        afpconfig->DerefFunc(afpconfig);
+        return (TM_ECODE_FAILED);
+    }
+
+#define T_DATA_SIZE 70000
+    ptv->data = SCMalloc(T_DATA_SIZE);
+    if (ptv->data == NULL) {
+        afpconfig->DerefFunc(afpconfig);
+        SCFree(ptv);
+        return (TM_ECODE_FAILED);
+    }
+    ptv->datalen = T_DATA_SIZE;
+#undef T_DATA_SIZE
+
+    *data = (void *)ptv;
+
+    afpconfig->DerefFunc(afpconfig);
+
+    /* If kernel is older than 3.0, VLAN is not stripped so we don't
+     * get the info from packet extended header but we will use a standard
+     * parsing of packet data (See Linux commit bcc6d47903612c3861201cc3a866fb604f26b8b2) */
+    /*if (SCKernelVersionIsAtLeast(3, 0)) {
+        ptv->flags |= AFP_VLAN_IN_HEADER;
+    }*/
+
     return TM_ECODE_OK;
 }
 
@@ -158,23 +368,6 @@ static inline void AFPReadApplyBypass(const AFPThreadVars *ptv, Packet *p)
   if (ptv->flags & AFP_BYPASS) {
     //p->BypassPacketsFlow = AFPBypassCallback;
   }
-}
-
-static int AFPGetIfnumByDev(int fd, const char *ifname, int verbose)
-{
-  struct ifreq ifr;
-
-  memset(&ifr, 0, sizeof(ifr));
-  strlcpy(ifr.ifr_name, ifname, sizeof(ifr.ifr_name));
-
-  if (ioctl(fd, SIOCGIFINDEX, &ifr) == -1) {
-    if (verbose)
-      SCLogError(SC_ERR_AFP_CREATE, "Unable to find iface %s: %s",
-                 ifname, strerror(errno));
-    return -1;
-  }
-
-  return ifr.ifr_ifindex;
 }
 
 static int AFPGetDevFlags(int fd, const char *ifname)
@@ -191,16 +384,6 @@ static int AFPGetDevFlags(int fd, const char *ifname)
   }
 
   return ifr.ifr_flags;
-}
-
-static void AFPPeerUpdate(AFPThreadVars *ptv)
-{
-  if (ptv->mpeer == NULL) {
-    return;
-  }
-  (void)SC_ATOMIC_SET(ptv->mpeer->if_idx, AFPGetIfnumByDev(ptv->socket, ptv->iface, 0));
-  (void)SC_ATOMIC_SET(ptv->mpeer->socket, ptv->socket);
-  (void)SC_ATOMIC_SET(ptv->mpeer->state, ptv->afp_state);
 }
 
 static void AFPSwitchState(AFPThreadVars *ptv, int state)
@@ -682,31 +865,6 @@ static int AFPReadFromRing(AFPThreadVars *ptv)
     //AFPDumpCounters(ptv);
   }
   return (AFP_READ_OK);
-}
-
-typedef struct AFPPeersList_ {
-  TAILQ_HEAD(, AFPPeer_) peers; /**< Head of list of fragments. */
-  int cnt;
-  int peered;
-  int turn; /**< Next value for initialisation order */
-  SC_ATOMIC_DECLARE(int, reached); /**< Counter used to synchronize start */
-} AFPPeersList;
-AFPPeersList peerslist;
-
-static int AFPPeersListWaitTurn(AFPPeer *peer)
-{
-  /* If turn is zero, we already have started threads once */
-  if (peerslist.turn == 0)
-    return 0;
-
-  if (peer->turn == SC_ATOMIC_GET(peerslist.reached))
-    return 0;
-  return 1;
-}
-
-static int AFPPeersListStarted(void)
-{
-  return !peerslist.turn;
 }
 
 static int AFPSynchronizeStart(AFPThreadVars *ptv, uint64_t *discarded_pkts)
@@ -1420,7 +1578,7 @@ void TmModuleReceiveAFPRegister (void)
     tmm_modules[TMM_RECEIVEAFP].name = "ReceiveAFP";
     tmm_modules[TMM_RECEIVEAFP].ThreadInit = ReceiveAFPThreadInit;
     tmm_modules[TMM_RECEIVEAFP].Func = NULL;
-    tmm_modules[TMM_RECEIVEAFP].PktAcqLoop = ReceiveAFPLoop;//TODO
+    tmm_modules[TMM_RECEIVEAFP].PktAcqLoop = ReceiveAFPLoop;
     tmm_modules[TMM_RECEIVEAFP].PktAcqBreakLoop = NULL;
     tmm_modules[TMM_RECEIVEAFP].ThreadDeinit = ReceiveAFPThreadDeinit;
 }

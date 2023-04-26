@@ -48,12 +48,21 @@ void TmThreadsSetFlag(ThreadVars *tv, uint32_t flag);
 void TmThreadTestThreadUnPaused(ThreadVars *tv);
 void TmThreadsUnsetFlag(ThreadVars *, uint32_t);
 void TmThreadWaitForFlag(ThreadVars *, uint32_t);
+void TmThreadContinue(ThreadVars *tv);
+void TmThreadContinueThreads(void);
+void TmThreadCheckThreadState(void);
+static int TmThreadTimeoutLoop(ThreadVars *tv, TmSlot *s);
 
+int TmThreadsRegisterThread(ThreadVars *tv, const int type);
 ThreadVars *TmThreadCreate(const char *name, const char *inq_name, const char *inqh_name,
                            const char *outq_name, const char *outqh_name, const char *slots,
                            void * (*fn_p)(void *), int mucond);
 ThreadVars *TmThreadCreatePacketHandler(const char *, const char *, const char *, const char *, const char *,
                                         const char *);
+ThreadVars *TmThreadCreateMgmtThreadByName(const char *name, const char *module,
+                                           int mucond);
+
+void TmThreadAppend(ThreadVars *tv, int type);
 
 typedef struct TmModule_ TmModule;
 void TmSlotSetFuncAppend(ThreadVars *tv, TmModule *tm, const void *data);

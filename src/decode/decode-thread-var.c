@@ -6,22 +6,23 @@
 
 DecodeThreadVars *DecodeThreadVarsAlloc(ThreadVars *tv)
 {
-  DecodeThreadVars *dtv = NULL;
+    DecodeThreadVars *dtv = NULL;
 
-  if ( (dtv = malloc(sizeof(DecodeThreadVars))) == NULL)
-    return NULL;
-  memset(dtv, 0, sizeof(DecodeThreadVars));
+    if ( (dtv = malloc(sizeof(DecodeThreadVars))) == NULL)
+        return NULL;
+    memset(dtv, 0, sizeof(DecodeThreadVars));
 
-  //TODO:modify by haolipeng
-  /*dtv->app_tctx = AppLayerGetCtxThread(tv);
+    //TODO:modify by haolipeng
+    /*dtv->app_tctx = AppLayerGetCtxThread(tv);
 
-  if (OutputFlowLogThreadInit(tv, NULL, &dtv->output_flow_thread_data) != TM_ECODE_OK) {
-    SCLogError(SC_ERR_THREAD_INIT, "initializing flow log API for thread failed");
-    DecodeThreadVarsFree(tv, dtv);
-    return NULL;
-  }*/
+    //TODO:modify by haolipeng
+    if (OutputFlowLogThreadInit(tv, NULL, &dtv->output_flow_thread_data) != TM_ECODE_OK) {
+      SCLogError(SC_ERR_THREAD_INIT, "initializing flow log API for thread failed");
+      DecodeThreadVarsFree(tv, dtv);
+      return NULL;
+    }*/
 
-  return dtv;
+    return dtv;
 }
 
 void DecodeThreadVarsFree(ThreadVars *tv, DecodeThreadVars *dtv)

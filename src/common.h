@@ -43,7 +43,7 @@ typedef struct packet_context_ {
     dp_stats_t stats;
     struct ether_addr ep_mac;
     uint8_t thr_id  :4,//标识线程id
-            released:1;//TODO: 标识是否释放,
+            released:1;
     bool epoll;         //
     bool jumboframe;    //巨帧
 }packet_context_t;

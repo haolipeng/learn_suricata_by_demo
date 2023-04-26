@@ -3,6 +3,7 @@
 #include "dpi/threadvars.h"
 #include <asm-generic/errno.h>
 #include <unistd.h>
+#include <stdio.h>
 
 #include "utils/util-random.h"
 #include "utils/util-time.h"
@@ -751,11 +752,12 @@ void FlowManagerThreadSpawn(void)
 
     SCLogConfig("using %u flow manager threads", flowmgr_number);
 
+    const char *thread_name_flow_mgr = "FM";
     for (uint32_t u = 0; u < flowmgr_number; u++) {
-        //char name[TM_THREAD_NAME_MAX];
-        //snprintf(name, sizeof(name), "%s#%02u", thread_name_flow_mgr, u+1);
+        char name[TM_THREAD_NAME_MAX];
+        snprintf(name, sizeof(name), "%s#%02u", thread_name_flow_mgr, u+1);
 
-        /*ThreadVars *tv_flowmgr = TmThreadCreateMgmtThreadByName(name,
+        ThreadVars *tv_flowmgr = TmThreadCreateMgmtThreadByName(name,
                 "FlowManager", 0);
         BUG_ON(tv_flowmgr == NULL);
 
@@ -764,7 +766,7 @@ void FlowManagerThreadSpawn(void)
         }
         if (TmThreadSpawn(tv_flowmgr) != TM_ECODE_OK) {
             FatalError(SC_ERR_FATAL, "flow manager thread spawn failed");
-        }*/
+        }
     }
     return;
 }
@@ -895,8 +897,9 @@ void FlowRecyclerThreadSpawn(void)
 
     SCLogConfig("using %u flow recycler threads", flowrec_number);
 
+    const char *thread_name_flow_rec = "FR";
     for (uint32_t u = 0; u < flowrec_number; u++) {
-        /*char name[TM_THREAD_NAME_MAX];
+        char name[TM_THREAD_NAME_MAX];
         snprintf(name, sizeof(name), "%s#%02u", thread_name_flow_rec, u+1);
 
         ThreadVars *tv_flowrec = TmThreadCreateMgmtThreadByName(name,
@@ -907,7 +910,7 @@ void FlowRecyclerThreadSpawn(void)
         }
         if (TmThreadSpawn(tv_flowrec) != TM_ECODE_OK) {
             FatalError(SC_ERR_FATAL, "flow recycler thread spawn failed");
-        }*/
+        }
     }
     return;
 }

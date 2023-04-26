@@ -52,21 +52,8 @@ void StreamTcpReassembleIncrMemuse(uint64_t size)
  */
 void StreamTcpReassembleDecrMemuse(uint64_t size)
 {
-#ifdef UNITTESTS
-  uint64_t presize = SC_ATOMIC_GET(ra_memuse);
-  if (RunmodeIsUnittests()) {
-    BUG_ON(presize > UINT_MAX);
-  }
-#endif
-
   (void) SC_ATOMIC_SUB(ra_memuse, size);
 
-#ifdef UNITTESTS
-  if (RunmodeIsUnittests()) {
-    uint64_t postsize = SC_ATOMIC_GET(ra_memuse);
-    BUG_ON(postsize > presize);
-  }
-#endif
   SCLogDebug("REASSEMBLY %"PRIu64", decr %"PRIu64, StreamTcpReassembleMemuseGlobalCounter(), size);
   return;
 }

@@ -3,6 +3,7 @@
 #include "queue.h"
 #include "threads.h"
 #include "utils/util-atomic.h"
+#include "tm-threads-common.h"
 #include <stdint.h>
 
 #ifndef HAVE_PACKET_FANOUT /* not defined if linux/if_packet.h trying to force */
@@ -25,7 +26,6 @@
 #define AFP_COPY_MODE_TAP   1
 
 #define AFP_IFACE_NAME_LENGTH 48
-#define HAVE_TPACKET_V3 1 //enable af-packet v3
 
 /* In kernel the allocated block size is allocated using the formula
  * page_size << order. So default value is using the same formula with
@@ -101,6 +101,7 @@ typedef struct AFPPacketVars_
   uint8_t copy_mode;
 } AFPPacketVars;
 
+TmEcode AFPPeersListInit(void);
 void TmModuleReceiveAFPRegister (void);
 void TmModuleDecodeAFPRegister (void);
 

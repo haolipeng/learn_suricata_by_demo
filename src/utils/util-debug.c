@@ -10,6 +10,7 @@
 #include "utils/helper.h"
 #include "util-enum.h"
 #include "base.h"
+#include "conf.h"
 
 /* holds the string-enum mapping for the enums held in the table SCLogLevel */
 SCEnumCharMap sc_log_level_map[ ] = {
@@ -84,7 +85,7 @@ static SCError SCLogMessageGetBuffer(
 
     /* make a copy of the format string as it will be modified below */
     char local_format[strlen(log_format) + 1];
-    strncpy(local_format, log_format, sizeof(local_format));//TODO:strlcpy
+    strlcpy(local_format, log_format, sizeof(local_format));
     char *temp_fmt = local_format;
     char *substr = temp_fmt;
 

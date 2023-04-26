@@ -512,11 +512,6 @@ static Flow *TcpReuseReplace(ThreadVars *tv, FlowLookupStruct *fls, FlowBucket *
 
 static inline bool FlowBelongsToUs(const ThreadVars *tv, const Flow *f)
 {
-#ifdef UNITTESTS
-    if (RunmodeIsUnittests()) {
-        return true;
-    }
-#endif
     return f->thread_id[0] == tv->id;
 }
 

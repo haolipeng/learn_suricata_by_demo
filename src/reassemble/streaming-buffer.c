@@ -38,7 +38,6 @@
 
 /* memory handling wrappers. If config doesn't define it's own set of
  * functions, use the defaults */
-//TODO:Calloc Realloc Free is modified by haolipeng
 #define MALLOC(cfg, s) \
     (cfg)->Malloc ? (cfg)->Malloc((s)) : SCMalloc((s))
 #define CALLOC(cfg, n, s) \

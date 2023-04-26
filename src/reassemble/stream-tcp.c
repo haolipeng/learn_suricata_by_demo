@@ -2350,12 +2350,6 @@ int StreamTcpPacket (ThreadVars *tv, Packet *p, StreamTcpThread *stt,
             goto error;
     }
 
-    /** queue for pseudo packet(s) that were created in the stream
-     *  process and need further handling. Currently only used when
-     *  receiving (valid) RST packets */
-    //TODO:modify by haolipeng
-    PacketQueueNoLock pseudo_queue;
-
     if (ssn == NULL || ssn->state == TCP_NONE) {
         if (StreamTcpPacketStateNone( tv, p, stt, ssn, &stt->pseudo_queue) == -1) {
             goto error;
@@ -2376,6 +2370,14 @@ int StreamTcpPacket (ThreadVars *tv, Packet *p, StreamTcpThread *stt,
             goto skip;
         }
 
+        if (p->flow->flags & FLOW_WRONG_THREAD) {
+            /* Stream and/or session in known bad condition. Block events
+             * from being set. */
+            p->flags |= PKT_STREAM_NO_EVENTS;
+        }
+
+        //TODO:some keep alive function
+
         /* handle the per 'state' logic */
         if (StreamTcpStateDispatch( tv, p, stt, ssn, &stt->pseudo_queue, ssn->state) < 0)
             goto error;
@@ -2394,9 +2396,9 @@ int StreamTcpPacket (ThreadVars *tv, Packet *p, StreamTcpThread *stt,
      * opposing direction.
      * There should be only one, but to be sure we do a while loop. */
     if (ssn != NULL) {
-        while (pseudo_queue.len > 0) {
+        while (stt->pseudo_queue.len > 0) {
             SCLogDebug("processing pseudo packet / stream end");
-            Packet *np = PacketDequeueNoLock(&pseudo_queue);
+            Packet *np = PacketDequeueNoLock(&stt->pseudo_queue);
             if (np != NULL) {
                 /* process the opposing direction of the original packet */
                 if (PKT_IS_TOSERVER(np)) {
@@ -2424,8 +2426,8 @@ int StreamTcpPacket (ThreadVars *tv, Packet *p, StreamTcpThread *stt,
     return 0;
 error:
     /* make sure we don't leave packets in our pseudo queue */
-    while (pseudo_queue.len > 0) {
-        Packet *np = PacketDequeueNoLock(&pseudo_queue);
+    while (stt->pseudo_queue.len > 0) {
+        Packet *np = PacketDequeueNoLock(&stt->pseudo_queue);
         if (np != NULL) {
             PacketEnqueueNoLock(pq, np);
         }

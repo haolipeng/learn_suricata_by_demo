@@ -8,6 +8,8 @@
 #include "utils/conf.h"
 #include "tm-modules.h"
 #include "tmqh-packetpool.h"
+#include "main.h"
+#include "utils/util-mem.h"
 
 
 /* root of the threadvars list */
@@ -15,6 +17,27 @@ ThreadVars *tv_root[TVT_MAX] = { NULL };
 
 /* lock to protect tv_root */
 SCMutex tv_root_lock = SCMUTEX_INITIALIZER;
+
+typedef struct Thread_ {
+    ThreadVars *tv;     /**< threadvars structure */
+    const char *name;
+    int type;
+    int in_use;         /**< bool to indicate this is in use */
+
+    struct timeval pktts;   /**< current packet time of this thread
+                             *   (offline mode) */
+    uint32_t sys_sec_stamp; /**< timestamp in seconds of the real system
+                             *   time when the pktts was last updated. */
+} Thread;
+
+typedef struct Threads_ {
+    Thread *threads;
+    size_t threads_size;
+    int threads_cnt;
+} Threads;
+
+static Threads thread_store = { NULL, 0, 0 };
+static SCMutex thread_store_lock = SCMUTEX_INITIALIZER;
 
 int TmThreadsCheckFlag(ThreadVars *tv, uint32_t flag)
 {
@@ -37,6 +60,30 @@ void TmThreadWaitForFlag(ThreadVars *tv, uint32_t flags)
         usleep(100);
     }
 
+    return;
+}
+
+void TmThreadContinue(ThreadVars *tv)
+{
+    TmThreadsUnsetFlag(tv, THV_PAUSE);
+
+    return;
+}
+
+/**
+ * \brief Unpauses all threads present in tv_root
+ */
+void TmThreadContinueThreads(void)
+{
+    SCMutexLock(&tv_root_lock);
+    for (int i = 0; i < TVT_MAX; i++) {
+        ThreadVars *tv = tv_root[i];
+        while (tv != NULL) {
+            TmThreadContinue(tv);
+            tv = tv->next;
+        }
+    }
+    SCMutexUnlock(&tv_root_lock);
     return;
 }
 
@@ -104,45 +151,6 @@ static void *TmThreadsManagement(void *td)
     return NULL;
 }
 
-/*static int TmThreadTimeoutLoop(ThreadVars *tv, TmSlot *s)
-{
-    TmSlot *fw_slot = tv->tm_flowworker;
-    int r = TM_ECODE_OK;
-
-    if (tv->stream_pq == NULL || fw_slot == NULL) {
-        SCLogDebug("not running TmThreadTimeoutLoop %p/%p", tv->stream_pq, fw_slot);
-        return r;
-    }
-
-    SCLogDebug("flow end loop starting");
-    while (1) {
-        SCMutexLock(&tv->stream_pq->mutex_q);
-        uint32_t len = tv->stream_pq->len;
-        SCMutexUnlock(&tv->stream_pq->mutex_q);
-        if (len > 0) {
-            while (len--) {
-                SCMutexLock(&tv->stream_pq->mutex_q);
-                Packet *p = PacketDequeue(tv->stream_pq);
-                SCMutexUnlock(&tv->stream_pq->mutex_q);
-                if (likely(p)) {
-                    if ((r = TmThreadsSlotProcessPkt(tv, fw_slot, p) != TM_ECODE_OK)) {
-                        if (r == TM_ECODE_FAILED)
-                            break;
-                    }
-                }
-            }
-        } else {
-            if (TmThreadsCheckFlag(tv, THV_KILL)) {
-                break;
-            }
-            usleep(1);
-        }
-    }
-    SCLogDebug("flow end loop complete");
-
-    return r;
-}*/
-
 static void *TmThreadsSlotPktAcqLoop(void *td)
 {
     ThreadVars *tv = (ThreadVars *)td;
@@ -175,6 +183,7 @@ static void *TmThreadsSlotPktAcqLoop(void *td)
             r = slot->SlotThreadInit(tv, slot->slot_initdata, &slot_data);
             if (r != TM_ECODE_OK) {
                 if (r == TM_ECODE_DONE) {
+                    EngineDone();
                     TmThreadsSetFlag(tv, THV_CLOSED | THV_INIT_DONE | THV_RUNNING_DONE);
                     goto error;
                 } else {
@@ -217,7 +226,6 @@ static void *TmThreadsSlotPktAcqLoop(void *td)
     TmThreadsSetFlag(tv, THV_INIT_DONE);
 
     while(run) {
-        //TODO:modify by haolipeng
         if (TmThreadsCheckFlag(tv, THV_PAUSE)) {
             TmThreadsSetFlag(tv, THV_PAUSED);
             TmThreadTestThreadUnPaused(tv);
@@ -241,8 +249,7 @@ static void *TmThreadsSlotPktAcqLoop(void *td)
     TmThreadsSetFlag(tv, THV_FLOW_LOOP);
 
     /* process all pseudo packets the flow timeout may throw at us */
-    //TODO:modify by haolipeng,need deal
-    //TmThreadTimeoutLoop(tv, s);
+    TmThreadTimeoutLoop(tv, s);
 
     TmThreadsSetFlag(tv, THV_RUNNING_DONE);
     TmThreadWaitForFlag(tv, THV_DEINIT);
@@ -269,6 +276,46 @@ error:
     tv->stream_pq = NULL;
     pthread_exit((void *) -1);
     return NULL;
+}
+
+static int TmThreadTimeoutLoop(ThreadVars *tv, TmSlot *s)
+{
+    TmSlot *fw_slot = tv->tm_flowworker;
+    int r = TM_ECODE_OK;
+
+    if (tv->stream_pq == NULL || fw_slot == NULL) {
+        SCLogDebug("not running TmThreadTimeoutLoop %p/%p", tv->stream_pq, fw_slot);
+        return r;
+    }
+
+    SCLogDebug("flow end loop starting");
+    while (1) {
+        SCMutexLock(&tv->stream_pq->mutex_q);
+        uint32_t len = tv->stream_pq->len;
+        SCMutexUnlock(&tv->stream_pq->mutex_q);
+        if (len > 0) {
+            while (len--) {
+                SCMutexLock(&tv->stream_pq->mutex_q);
+                Packet *p = PacketDequeue(tv->stream_pq);
+                SCMutexUnlock(&tv->stream_pq->mutex_q);
+                if (likely(p)) {
+                    if ((r = TmThreadsSlotProcessPkt(tv, fw_slot, p) != TM_ECODE_OK)) {
+                        if (r == TM_ECODE_FAILED)
+                            break;
+                    }
+                }
+            }
+        } else {
+            if (TmThreadsCheckFlag(tv, THV_KILL)) {
+                break;
+            }
+            usleep(1);
+        }
+    }
+    SCLogDebug("flow end loop complete");
+
+
+    return r;
 }
 
 static TmEcode TmThreadSetSlots(ThreadVars *tv, const char *name, void *(*fn_p)(void *))
@@ -427,11 +474,32 @@ ThreadVars *TmThreadCreatePacketHandler(const char *name, const char *inq_name,
 
   if (tv != NULL) {
     tv->type = TVT_PPT;
-    //tv->id = TmThreadsRegisterThread(tv, tv->type);//not need
+    tv->id = TmThreadsRegisterThread(tv, tv->type);//not need
   }
 
 
   return tv;
+}
+
+ThreadVars *TmThreadCreateMgmtThreadByName(const char *name, const char *module,
+                                           int mucond)
+{
+    ThreadVars *tv = NULL;
+
+    tv = TmThreadCreate(name, NULL, NULL, NULL, NULL, "management", NULL, mucond);
+
+    if (tv != NULL) {
+        tv->type = TVT_MGMT;
+        tv->id = TmThreadsRegisterThread(tv, tv->type);
+        //TmThreadSetCPU(tv, MANAGEMENT_CPU_SET);
+
+        TmModule *m = TmModuleGetByName(module);
+        if (m) {
+            TmSlotSetFuncAppend(tv, m, NULL);
+        }
+    }
+
+    return tv;
 }
 
 void TmSlotSetFuncAppend(ThreadVars *tv, TmModule *tm, const void *data)
@@ -477,6 +545,36 @@ void TmSlotSetFuncAppend(ThreadVars *tv, TmModule *tm, const void *data)
     return;
 }
 
+void TmThreadAppend(ThreadVars *tv, int type)
+{
+    SCMutexLock(&tv_root_lock);
+
+    if (tv_root[type] == NULL) {
+        tv_root[type] = tv;
+        tv->next = NULL;
+
+        SCMutexUnlock(&tv_root_lock);
+
+        return;
+    }
+
+    ThreadVars *t = tv_root[type];
+
+    while (t) {
+        if (t->next == NULL) {
+            t->next = tv;
+            tv->next = NULL;
+            break;
+        }
+
+        t = t->next;
+    }
+
+    SCMutexUnlock(&tv_root_lock);
+
+    return;
+}
+
 TmEcode TmThreadSpawn(ThreadVars *tv)
 {
     pthread_attr_t attr;
@@ -494,8 +592,8 @@ TmEcode TmThreadSpawn(ThreadVars *tv)
                    "Unable to create thread with pthread_create() is %" PRId32, rc);
     }
 
-    //TmThreadWaitForFlag(tv, THV_INIT_DONE | THV_RUNNING_DONE);
-    //TmThreadAppend(tv, tv->type);
+    TmThreadWaitForFlag(tv, THV_INIT_DONE | THV_RUNNING_DONE);
+    TmThreadAppend(tv, tv->type);
     return TM_ECODE_OK;
 }
 
@@ -551,6 +649,22 @@ TmEcode TmThreadsSlotProcessPkt(ThreadVars *tv, TmSlot *s, Packet *p)
   //TmThreadsHandleInjectedPackets(tv);
 
   return TM_ECODE_OK;
+}
+
+void TmThreadCheckThreadState(void)
+{
+    SCMutexLock(&tv_root_lock);
+    for (int i = 0; i < TVT_MAX; i++) {
+        ThreadVars *tv = tv_root[i];
+        while (tv) {
+            if (TmThreadsCheckFlag(tv, THV_FAILED)) {
+                FatalError(SC_ERR_FATAL, "thread %s failed", tv->name);
+            }
+            tv = tv->next;
+        }
+    }
+    SCMutexUnlock(&tv_root_lock);
+    return;
 }
 
 TmEcode TmThreadWaitOnThreadInit(void)
@@ -621,3 +735,50 @@ TmEcode TmThreadWaitOnThreadInit(void)
 
     return TM_ECODE_OK;
 }
+
+#define STEP 32
+/**
+ *  \retval id thread id, or 0 if not found
+ */
+int TmThreadsRegisterThread(ThreadVars *tv, const int type)
+{
+    SCMutexLock(&thread_store_lock);
+    if (thread_store.threads == NULL) {
+        thread_store.threads = SCCalloc(STEP, sizeof(Thread));
+        BUG_ON(thread_store.threads == NULL);
+        thread_store.threads_size = STEP;
+    }
+
+    size_t s;
+    for (s = 0; s < thread_store.threads_size; s++) {
+        if (thread_store.threads[s].in_use == 0) {
+            Thread *t = &thread_store.threads[s];
+            t->name = tv->name;
+            t->type = type;
+            t->tv = tv;
+            t->in_use = 1;
+
+            SCMutexUnlock(&thread_store_lock);
+            return (int)(s+1);
+        }
+    }
+
+    /* if we get here the array is completely filled */
+    void *newmem = SCRealloc(thread_store.threads, ((thread_store.threads_size + STEP) * sizeof(Thread)));
+    BUG_ON(newmem == NULL);
+    thread_store.threads = newmem;
+    memset((uint8_t *)thread_store.threads + (thread_store.threads_size * sizeof(Thread)), 0x00, STEP * sizeof(Thread));
+
+    Thread *t = &thread_store.threads[thread_store.threads_size];
+    t->name = tv->name;
+    t->type = type;
+    t->tv = tv;
+    t->in_use = 1;
+
+    s = thread_store.threads_size;
+    thread_store.threads_size += STEP;
+
+    SCMutexUnlock(&thread_store_lock);
+    return (int)(s+1);
+}
+#undef STEP

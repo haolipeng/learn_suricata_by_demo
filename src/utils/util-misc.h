@@ -10,6 +10,9 @@
                      param_name, value);                                \
     } while (0)
 
+void ParseSizeInit(void);
+void ParseSizeDeinit(void);
+
 int ParseSizeStringU16(const char *, uint16_t *);
 int ParseSizeStringU32(const char *, uint32_t *);
 int ParseSizeStringU64(const char *size, uint64_t *res);

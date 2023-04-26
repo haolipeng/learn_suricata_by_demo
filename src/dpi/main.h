@@ -5,6 +5,18 @@
 
 #include "runmodes.h"
 
+/* Engine stage/status*/
+enum {
+    SURICATA_INIT = 0,
+    SURICATA_RUNTIME,
+    SURICATA_DEINIT
+};
+
+/* runtime engine control flags */
+#define SURICATA_STOP    (1 << 0)   /**< gracefully stop the engine: process all
+                                     outstanding packets first */
+#define SURICATA_DONE    (1 << 2)   /**< packets capture ended */
+
 typedef struct SCInstance_ {
     enum RunModes run_mode;
     enum RunModes aux_run_mode;
@@ -48,4 +60,5 @@ typedef struct SCInstance_ {
     const char *capture_plugin_args;
 } SCInstance;
 
+void EngineDone(void);
 #endif //NET_THREAT_DETECT_MAIN_H

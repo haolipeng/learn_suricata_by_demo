@@ -131,7 +131,6 @@ typedef struct SCLogConfig_ {
 /* The log format prefix for the format specifiers */
 #define SC_LOG_FMT_PREFIX           '%'
 
-//TODO:modify by haolipeng
 #define ATTR_FMT_PRINTF(x, y) __attribute__((format(printf, (x), (y))))
 
 extern SCLogLevel sc_log_global_log_level;

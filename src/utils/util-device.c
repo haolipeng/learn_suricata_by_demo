@@ -142,6 +142,24 @@ int LiveRegisterDeviceName(const char *dev)
   return 0;
 }
 
+LiveDevice *LiveGetDevice(const char *name)
+{
+    LiveDevice *pd;
+
+    if (name == NULL) {
+        SCLogWarning(SC_ERR_INVALID_VALUE, "Name of device should not be null");
+        return NULL;
+    }
+
+    TAILQ_FOREACH(pd, &live_devices, next) {
+        if (!strcmp(name, pd->dev)) {
+            return pd;
+        }
+    }
+
+    return NULL;
+}
+
 void LiveDeviceFinalize(void)
 {
     LiveDeviceName *ld, *pld;

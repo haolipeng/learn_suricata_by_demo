@@ -123,6 +123,9 @@ typedef struct Packet_
   /* Incoming interface */
   struct LiveDevice_ *livedev;
 
+    /** packet number in the pcap file, matches wireshark */
+    uint64_t pcap_cnt;
+
   /* engine events */
   PacketEngineEvents events;
 

@@ -221,9 +221,12 @@ typedef uint16_t Port;
         memset(&(p)->l4vars, 0x00, sizeof((p)->l4vars));    \
     } while (0)
 
-/** libpcap shows us the way to linktype codes
- * \todo we need more & maybe put them in a separate file? */
-#define LINKTYPE_ETHERNET    1 //TODO:modify by haolipeng #define DLT_EN10MB	1	/* Ethernet (10Mb) */
+/* pcap provides this, but we don't want to depend on libpcap */
+#ifndef DLT_EN10MB
+#define DLT_EN10MB 1
+#endif
+
+#define LINKTYPE_ETHERNET    DLT_EN10MB
 
 typedef struct AppLayerDecoderEvents_ AppLayerDecoderEvents;
 void AppLayerDecoderEventsResetEvents(AppLayerDecoderEvents *events);

@@ -43,7 +43,6 @@ int DecodeUDP(Packet *p,const uint8_t *pkt, uint16_t len)
         return TM_ECODE_FAILED;
     }
 
-    //TODO:comment by haolipeng
     FlowSetupPacket(p);
 
     return TM_ECODE_OK;
