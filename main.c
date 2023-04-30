@@ -235,6 +235,7 @@ static TmEcode ParseInterfacesList(const int runmode, char *pcap_dev)
 
 void PreRunInit(const int runmode)
 {
+    //TODO:modify by haolipeng
     //DefragInit();
     FlowInitConfig(FLOW_QUIET);
     StreamTcpInitConfig(STREAM_VERBOSE);

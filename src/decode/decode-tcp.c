@@ -37,7 +37,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
              * so here the len of the specific option must be bad.
              * Also check for invalid lengths 0 and 1. */
             if (unlikely(olen > plen || olen < 2)) {
-                //ENGINE_SET_INVALID_EVENT(p, TCP_OPT_INVALID_LEN);
+                ENGINE_SET_INVALID_EVENT(p, TCP_OPT_INVALID_LEN);
                 p->flags |= PKT_IS_INVALID;
                 return;
             }
@@ -149,7 +149,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                 case TCP_OPT_MD5:
                     SCLogDebug("MD5 option, len %u", olen);
                     if (olen != 18) {
-                        //ENGINE_SET_INVALID_EVENT(p,TCP_OPT_INVALID_LEN);
+                        ENGINE_SET_INVALID_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
                         /* we can't validate the option as the key is out of band */
                         p->tcpvars.md5_option_present = true;
@@ -159,7 +159,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                 case TCP_OPT_AO:
                     SCLogDebug("AU option, len %u", olen);
                     if (olen < 4) {
-                        //ENGINE_SET_INVALID_EVENT(p,TCP_OPT_INVALID_LEN);
+                        ENGINE_SET_INVALID_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
                         /* we can't validate the option as the key is out of band */
                         p->tcpvars.ao_option_present = true;
@@ -177,7 +177,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
 static int DecodeTCPPacket(Packet *p, const uint8_t *pkt, uint16_t len)
 {
     if (unlikely(len < TCP_HEADER_LEN)) {
-        //ENGINE_SET_INVALID_EVENT(p, TCP_PKT_TOO_SMALL);
+        ENGINE_SET_INVALID_EVENT(p, TCP_PKT_TOO_SMALL);
         return -1;
     }
 
@@ -185,13 +185,13 @@ static int DecodeTCPPacket(Packet *p, const uint8_t *pkt, uint16_t len)
 
     uint8_t hlen = TCP_GET_HLEN(p);
     if (unlikely(len < hlen)) {
-        //ENGINE_SET_INVALID_EVENT(p, TCP_HLEN_TOO_SMALL);
+        ENGINE_SET_INVALID_EVENT(p, TCP_HLEN_TOO_SMALL);
         return -1;
     }
 
     uint8_t tcp_opt_len = hlen - TCP_HEADER_LEN;
     if (unlikely(tcp_opt_len > TCP_OPTLENMAX)) {
-        //ENGINE_SET_INVALID_EVENT(p, TCP_INVALID_OPTLEN);
+        ENGINE_SET_INVALID_EVENT(p, TCP_INVALID_OPTLEN);
         return -1;
     }
 

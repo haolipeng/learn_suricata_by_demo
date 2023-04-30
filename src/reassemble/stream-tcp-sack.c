@@ -234,8 +234,8 @@ int StreamTcpSackUpdatePacket(TcpStream *stream, Packet *p)
         }
 
         if (SEQ_GT(re, stream->next_win)) {
-            /*SCLogDebug("record %u:%u beyond next_win %u",
-                       le, re, stream->next_win);*/
+            SCLogDebug("record %u:%u beyond next_win %u",
+                       le, re, stream->next_win);
             goto next;
         }
 

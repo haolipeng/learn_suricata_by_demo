@@ -304,6 +304,19 @@ void AppLayerDecoderEventsResetEvents(AppLayerDecoderEvents *events);
         AppLayerDecoderEventsFreeEvents(&(p)->app_layer_events);                                   \
     } while (0)
 
+#define ENGINE_SET_EVENT(p, e) do { \
+    SCLogDebug("p %p event %d", (p), e); \
+    if ((p)->events.cnt < PACKET_ENGINE_EVENT_MAX) { \
+        (p)->events.events[(p)->events.cnt] = e; \
+        (p)->events.cnt++; \
+    } \
+} while(0)
+
+#define ENGINE_SET_INVALID_EVENT(p, e) do { \
+    p->flags |= PKT_IS_INVALID; \
+    ENGINE_SET_EVENT(p, e); \
+} while(0)
+
 static inline bool DecodeNetworkLayer(const uint16_t proto, Packet *p, const uint8_t *data, const uint32_t len)
 {
     switch (proto) {
@@ -313,9 +326,8 @@ static inline bool DecodeNetworkLayer(const uint16_t proto, Packet *p, const uin
             break;
         }
         case ETHERNET_TYPE_IPV6: {
-            //TODO:comment by haolipeng
-            //uint16_t ip_len = (len < USHRT_MAX) ? (uint16_t)len : (uint16_t)USHRT_MAX;
-            //DecodeIPV6(p, data, ip_len);
+            uint16_t ip_len = (len < USHRT_MAX) ? (uint16_t)len : (uint16_t)USHRT_MAX;
+            DecodeIPV6(p, data, ip_len);
             break;
         }
         default:

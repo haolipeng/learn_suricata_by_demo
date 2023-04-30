@@ -88,8 +88,8 @@ static inline int InsertSegmentDataCustom(TcpStream *stream, TcpSegment *seg, ui
 static inline bool CheckOverlap(struct TCPSEG *tree, TcpSegment *seg)
 {
     const uint32_t re = SEG_SEQ_RIGHT_EDGE(seg);
-    /*SCLogDebug("start. SEQ %u payload_len %u. Right edge: %u. Seg %p",
-               seg->seq, seg->payload_len, re, seg);*/
+    SCLogDebug("start. SEQ %u payload_len %u. Right edge: %u. Seg %p",
+               seg->seq, seg->payload_len, re, seg);
 
     /* check forward */
     TcpSegment *next = TCPSEG_RB_NEXT(seg);
@@ -131,17 +131,17 @@ static int DoInsertSegment (TcpStream *stream, TcpSegment *seg, TcpSegment **dup
     /* before our base_seq we don't insert it in our list */
     if (SEQ_LEQ(SEG_SEQ_RIGHT_EDGE(seg), stream->base_seq))
     {
-        /*SCLogDebug("not inserting: SEQ+payload %"PRIu32", last_ack %"PRIu32", "
+        SCLogDebug("not inserting: SEQ+payload %"PRIu32", last_ack %"PRIu32", "
                    "base_seq %"PRIu32, (seg->seq + TCP_SEG_LEN(seg)),
-                   stream->last_ack, stream->base_seq);*/
+                   stream->last_ack, stream->base_seq);
         //StreamTcpSetEvent(p, STREAM_REASSEMBLY_SEGMENT_BEFORE_BASE_SEQ);
         return -1;
     }
 
     /* fast track */
     if (RB_EMPTY(&stream->seg_tree)) {
-        /*SCLogDebug("empty tree, inserting seg %p seq %" PRIu32 ", "
-                   "len %" PRIu32 "", seg, seg->seq, TCP_SEG_LEN(seg));*/
+        SCLogDebug("empty tree, inserting seg %p seq %" PRIu32 ", "
+                   "len %" PRIu32 "", seg, seg->seq, TCP_SEG_LEN(seg));
         TCPSEG_RB_INSERT(&stream->seg_tree, seg);
         stream->segs_right_edge = SEG_SEQ_RIGHT_EDGE(seg);
         return 0;
@@ -152,8 +152,8 @@ static int DoInsertSegment (TcpStream *stream, TcpSegment *seg, TcpSegment **dup
     TcpSegment *res = TCPSEG_RB_INSERT(&stream->seg_tree, seg);
     if (res) {
         //segment 在红黑树中有一个重复
-        /*SCLogDebug("seg has a duplicate in the tree seq %u/%u",
-                   res->seq, res->payload_len);*/
+        SCLogDebug("seg has a duplicate in the tree seq %u/%u",
+                   res->seq, res->payload_len);
         /* exact duplicate SEQ + payload_len */
         *dup_seg = res;
         return 2; // duplicate has overlap by definition.
@@ -176,10 +176,10 @@ static int DoInsertSegment (TcpStream *stream, TcpSegment *seg, TcpSegment **dup
 static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
                                const TcpSegment *seg, uint8_t *buf, Packet *p)
 {
-    /*SCLogDebug("handle overlap for segment %p seq %u len %u re %u, "
+    SCLogDebug("handle overlap for segment %p seq %u len %u re %u, "
                "list segment %p seq %u len %u re %u", seg, seg->seq,
                p->payload_len, SEG_SEQ_RIGHT_EDGE(seg),
-               list, list->seq, TCP_SEG_LEN(list), SEG_SEQ_RIGHT_EDGE(list));*/
+               list, list->seq, TCP_SEG_LEN(list), SEG_SEQ_RIGHT_EDGE(list));
 
     int data_is_different = 0;
     int use_new_data = 0;
@@ -294,9 +294,9 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
     }
 
 
-    /*SCLogDebug("data_is_different %s, use_new_data %s",
+    SCLogDebug("data_is_different %s, use_new_data %s",
                data_is_different ? "yes" : "no",
-               use_new_data ? "yes" : "no");*/
+               use_new_data ? "yes" : "no");
 
     /* if the data is different and we don't want to use the new (seg)
      * data, we have to update buf with the list data */
