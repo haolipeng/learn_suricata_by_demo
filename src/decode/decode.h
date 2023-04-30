@@ -8,8 +8,8 @@
 #include <stdlib.h>
 
 #include "decode-events.h"
-#include "dpi/address-port.h"
-#include "dpi/packet-define.h"
+#include "common/address-port.h"
+#include "common/packet-define.h"
 #include "utils/helper.h"
 
 #include "decode-ethernet.h"

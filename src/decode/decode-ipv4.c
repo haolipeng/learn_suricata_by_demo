@@ -481,9 +481,8 @@ int DecodeIPV4(Packet *p,const uint8_t *pkt, uint16_t len)
             break;
         case IPPROTO_ICMP:
             per_core_counter.icmp_pkts++;//统计icmp数据包个数
-            //TODO:coment by haolipeng
-            //DecodeICMPV4(p, pkt + IPV4_GET_HLEN(p),
-                         //IPV4_GET_IPLEN(p) - IPV4_GET_HLEN(p));
+            //TODO:comment by haolipeng
+            //DecodeICMPV4(p, pkt + IPV4_GET_HLEN(p),IPV4_GET_IPLEN(p) - IPV4_GET_HLEN(p));
             break;
         default:
             per_core_counter.other_pkts++;//统计other数据包个数

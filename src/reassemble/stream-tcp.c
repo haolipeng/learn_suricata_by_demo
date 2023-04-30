@@ -2,7 +2,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-#include "dpi/packet-queue.h"
+#include "utils/packet-queue.h"
 #include "utils/util-pool-thread.h"
 #include "stream-tcp-private.h"
 #include "stream-tcp-reassemble.h"
@@ -159,6 +159,14 @@ void StreamTcpSetOSPolicy(TcpStream *stream, Packet *p)
     if (SEQ_GT(((win) + sacked_size__), (stream)->next_win)) { \
         (stream)->next_win = ((win) + sacked_size__); \
     } \
+}
+
+int StreamTcpCheckMemcap(uint64_t size)
+{
+    uint64_t memcapcopy = SC_ATOMIC_GET(stream_config.memcap);
+    if (memcapcopy == 0 || size + SC_ATOMIC_GET(st_memuse) <= memcapcopy)
+        return 1;
+    return 0;
 }
 
 static int RandomGetWrap(void)

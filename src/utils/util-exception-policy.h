@@ -1,7 +1,7 @@
 #ifndef __UTIL_EXCEPTION_POLICY_H__
 #define __UTIL_EXCEPTION_POLICY_H__
 
-#include "dpi/packet-define.h"
+#include "common/packet-define.h"
 
 enum ExceptionPolicy {
     EXCEPTION_POLICY_IGNORE = 0,

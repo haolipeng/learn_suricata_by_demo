@@ -1,7 +1,3 @@
-//
-// Created by haolipeng on 12/28/22.
-//
-
 #ifndef NET_THREAT_DETECT_PACKET_H
 #define NET_THREAT_DETECT_PACKET_H
 

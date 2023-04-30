@@ -247,7 +247,7 @@ typedef struct AppLayerParserState_ AppLayerParserState;
 /* Hash key for the flow hash */
 #include "app-layer/app-layer-protos.h"
 #include "decode/decode-thread-var.h"
-#include "dpi/packet-define.h"
+#include "common/packet-define.h"
 #include "utils/util-atomic.h"
 
 /* global flow config */

@@ -1,7 +1,7 @@
 #ifndef NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H
 #define NET_THREAT_DETECT_STREAM_TCP_REASSEMBLE_H
 
-#include "dpi/packet-queue.h"
+#include "utils/packet-queue.h"
 #include "decode/decode.h"
 #include "stream-tcp-private.h"
 #include "dpi/threadvars.h"

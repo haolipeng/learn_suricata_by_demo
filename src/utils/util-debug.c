@@ -6,7 +6,7 @@
 #include <unistd.h>
 
 #include "util-debug.h"
-#include "dpi/common.h"
+#include "common/common.h"
 #include "utils/helper.h"
 #include "util-enum.h"
 #include "base.h"

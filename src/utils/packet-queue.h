@@ -10,8 +10,8 @@ typedef struct PacketQueueNoLock_ {
 } PacketQueueNoLock;
 
 typedef struct PacketQueue_ {
-    struct Packet_ *top;
-    struct Packet_ *bot;
+    Packet *top;
+    Packet *bot;
     uint32_t len;
     pthread_mutex_t mutex_q;
     pthread_cond_t cond_q;

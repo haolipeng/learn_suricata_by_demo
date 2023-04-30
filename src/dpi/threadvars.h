@@ -5,7 +5,7 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include "packet-queue.h"
+#include "utils/packet-queue.h"
 #include "tm-queues.h"
 #include "utils/util-atomic.h"
 #include "tm-threads.h"

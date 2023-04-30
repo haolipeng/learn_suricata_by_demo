@@ -82,13 +82,13 @@ add_executable(net_threat_detect
         src/app-layer/app-layer-parser.h src/app-layer/app-layer-parser.c
 
         /*dpi*/
-        src/dpi/dpi_module.h src/dpi/common.h src/dpi/main.h
+        src/dpi/dpi_module.h src/common/common.h src/dpi/main.h
         src/dpi/dpi_entry.c src/dpi/dpi_entry.h
-        src/dpi/packet-queue.h src/dpi/packet-queue.c
+        src/utils/packet-queue.h src/utils/packet-queue.c
         src/dpi/tmqh-packetpool.h src/dpi/tmqh-packetpool.c
-        src/dpi/detect.h src/dpi/address-port.h src/dpi/queue.h src/dpi/packet-define.h
+        src/detect/detect.h src/common/address-port.h src/utils/queue.h src/common/packet-define.h
         src/dpi/threadvars.h  src/dpi/threads.h
-        src/dpi/autoconf.h
+        src/common/autoconf.h
         src/dpi/tm-threads.h src/dpi/tm-threads.c
         src/dpi/tm-queues.h src/dpi/tm-queues.c
         src/dpi/tm-queuehandlers.h src/dpi/tm-queuehandlers.c
@@ -98,7 +98,7 @@ add_executable(net_threat_detect
         src/dpi/tm-threads-common.h src/dpi/runmode-af-packet.h src/dpi/runmode-af-packet.c
         src/dpi/runmodes.c src/dpi/runmodes.h
         src/dpi/runmode-pcap-file.h src/dpi/runmode-pcap-file.c
-        src/dpi/conf-yaml-loader.c src/dpi/conf-yaml-loader.h
+        src/utils/conf-yaml-loader.c src/utils/conf-yaml-loader.h
         src/decode/decode-ipv6.c)
 
 target_link_libraries(net_threat_detect

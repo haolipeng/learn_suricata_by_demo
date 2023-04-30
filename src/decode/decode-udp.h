@@ -1,7 +1,7 @@
 #ifndef NET_THREAT_DETECT_DECODE_UDP_H
 #define NET_THREAT_DETECT_DECODE_UDP_H
 
-#include "dpi/common.h"
+#include "common/common.h"
 #include <stdint.h>
 
 #define UDP_HEADER_LEN         8

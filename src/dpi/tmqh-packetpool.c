@@ -1,4 +1,4 @@
-#include "dpi/packet-queue.h"
+#include "utils/packet-queue.h"
 #include "reassemble/stream-tcp-reassemble.h"
 #include "tmqh-packetpool.h"
 #include "utils/util-optimize.h"

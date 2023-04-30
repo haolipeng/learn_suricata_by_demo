@@ -1,6 +1,6 @@
 #ifndef NET_THREAT_DETECT_SOURCE_AF_PACKET_H
 #define NET_THREAT_DETECT_SOURCE_AF_PACKET_H
-#include "queue.h"
+#include "utils/queue.h"
 #include "threads.h"
 #include "utils/util-atomic.h"
 #include "tm-threads-common.h"

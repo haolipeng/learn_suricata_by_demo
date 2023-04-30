@@ -7,7 +7,7 @@
 #include <bits/types/sig_atomic_t.h>
 
 #include "base.h"
-#include "dpi/conf-yaml-loader.h"
+#include "utils/conf-yaml-loader.h"
 #include "dpi/runmodes.h"
 #include "dpi/source-af-packet.h"
 #include "dpi/tm-modules.h"

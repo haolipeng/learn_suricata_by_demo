@@ -1,6 +1,3 @@
-//
-// Created by haolipeng on 4/6/23.
-//
 #include <stdlib.h>
 #include <pthread.h>
 #include "packet-queue.h"

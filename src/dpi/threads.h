@@ -1,7 +1,7 @@
 #ifndef __THREADS_H__
 #define __THREADS_H__
 
-#include "autoconf.h"
+#include "common/autoconf.h"
 
 #if defined(TLS_C11)
 #define thread_local _Thread_local
@@ -16,13 +16,6 @@
 #include <unistd.h>
 #endif
 
-#ifdef PROFILING
-#include "util-cpu.h"
-#ifdef PROFILE_LOCKING
-#include "util-profiling-locks.h"
-#endif /* PROFILE_LOCKING */
-#endif /* PROFILING */
-
 #if defined OS_FREEBSD || __OpenBSD__
 
 #if ! defined __OpenBSD__
@@ -32,24 +25,6 @@ enum {
     PRIO_LOW = 2,
     PRIO_MEDIUM = 0,
     PRIO_HIGH = -2,
-};
-
-#elif OS_DARWIN
-
-#include <mach/mach_init.h>
-enum {
-    PRIO_LOW = 2,
-    PRIO_MEDIUM = 0,
-    PRIO_HIGH = -2,
-};
-
-#elif OS_WIN32
-
-#include <windows.h>
-enum {
-    PRIO_LOW = THREAD_PRIORITY_LOWEST,
-    PRIO_MEDIUM = THREAD_PRIORITY_NORMAL,
-    PRIO_HIGH = THREAD_PRIORITY_HIGHEST,
 };
 
 #else /* LINUX */
@@ -78,8 +53,6 @@ enum {
  * Please, make sure you initialize mutex and spinlocks before using them
  * because, some OS doesn't initialize them for you :)
  */
-
-//#define DBG_THREADS
 
 #if defined DBG_THREADS
 #ifdef PROFILE_LOCKING

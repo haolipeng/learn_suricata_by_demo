@@ -1,6 +1,6 @@
 #ifndef NET_THREAT_DETECT_CONF_H
 #define NET_THREAT_DETECT_CONF_H
-#include "dpi/queue.h"
+#include "queue.h"
 #include <stddef.h>
 #include <stdint.h>
 

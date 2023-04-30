@@ -11,7 +11,7 @@
 
 #define __USE_GNU
 #include <bits/poll.h>
-#include "autoconf.h"
+#include "common/autoconf.h"
 
 #include "source-af-packet.h"
 #include "decode/decode-vlan.h"

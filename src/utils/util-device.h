@@ -3,7 +3,7 @@
 
 #include <stdbool.h>
 #include <stdint.h>
-#include "dpi/queue.h"
+#include "queue.h"
 #include "util-atomic.h"
 
 #define MAX_DEVNAME 10

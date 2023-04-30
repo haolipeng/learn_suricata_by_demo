@@ -1,5 +1,5 @@
-#include "dpi/detect.h"
-#include "dpi/packet-queue.h"
+#include "detect/detect.h"
+#include "utils/packet-queue.h"
 #include "flow/flow-spare-pool.h"
 #include "flow/flow-timeout.h"
 #include "flow/flow-util.h"

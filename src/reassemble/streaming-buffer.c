@@ -24,7 +24,7 @@
 #include <ctype.h>
 
 #include "base.h"
-#include "dpi/common.h"
+#include "common/common.h"
 #include "utils/util-debug.h"
 #include "streaming-buffer.h"
 

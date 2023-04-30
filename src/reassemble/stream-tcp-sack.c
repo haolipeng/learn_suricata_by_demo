@@ -1,5 +1,6 @@
 #include "decode/decode.h"
 #include "stream-tcp-private.h"
+#include "stream-tcp.h"
 
 RB_GENERATE(TCPSACK, StreamTcpSackRecord, rb, TcpSackCompare);
 
@@ -19,6 +20,12 @@ int TcpSackCompare(struct StreamTcpSackRecord *a, struct StreamTcpSackRecord *b)
     }
 }
 
+static inline void StreamTcpSackRecordFree(StreamTcpSackRecord *rec)
+{
+    free(rec);
+    StreamTcpDecrMemuse((uint64_t)sizeof(*rec));
+}
+
 void StreamTcpSackPruneList(TcpStream *stream)
 {
     StreamTcpSackRecord *rec = NULL, *safe = NULL;
@@ -28,8 +35,7 @@ void StreamTcpSackPruneList(TcpStream *stream)
             stream->sack_size -= (rec->re - rec->le);
             TCPSACK_RB_REMOVE(&stream->sack_tree, rec);
 
-            //TODO://modify by haolipeng
-            //StreamTcpSackRecordFree(rec);
+            StreamTcpSackRecordFree(rec);
             if(NULL != rec){
                 free(rec);
             }
@@ -50,16 +56,15 @@ void StreamTcpSackPruneList(TcpStream *stream)
 
 static inline StreamTcpSackRecord *StreamTcpSackRecordAlloc(void)
 {
+    if (StreamTcpCheckMemcap((uint32_t)sizeof(StreamTcpSackRecord)) == 0)
+        return NULL;
+
     StreamTcpSackRecord *rec = malloc(sizeof(*rec));
     if (unlikely(rec == NULL))
         return NULL;
 
+    StreamTcpIncrMemuse((uint64_t)sizeof(*rec));
     return rec;
-}
-
-static inline void StreamTcpSackRecordFree(StreamTcpSackRecord *rec)
-{
-    free(rec);
 }
 
 static inline void ConsolidateFwd(TcpStream *stream, struct TCPSACK *tree, struct StreamTcpSackRecord *sa)
