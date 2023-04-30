@@ -9,7 +9,6 @@
 #include "dpi/tm-modules.h"
 #include <stdint.h>
 
-// TODO:modify by haolipeng
 typedef DetectEngineThreadCtx* DetectEngineThreadCtxPtr;
 
 typedef struct FlowTimeoutCounters {

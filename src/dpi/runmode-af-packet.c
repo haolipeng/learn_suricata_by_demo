@@ -1,7 +1,7 @@
 #include <stdio.h>
-#include <errno.h>
 #include <linux/if_packet.h>
 #include <unistd.h>
+
 #include "runmode-af-packet.h"
 #include "tm-threads.h"
 #include "tm-modules.h"

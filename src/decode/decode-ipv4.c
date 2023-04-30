@@ -1,6 +1,7 @@
 #include "decode-ipv4.h"
 #include "decode.h"
 #include "dpi/dpi_module.h"
+#include "utils/packet-queue.h"
 
 static int IPV4OptValidateGeneric(Packet *p, const IPV4Opt *o)
 {
@@ -8,7 +9,6 @@ static int IPV4OptValidateGeneric(Packet *p, const IPV4Opt *o)
         /* See: RFC 4782 */
         case IPV4_OPT_QS:
             if (o->len < IPV4_OPT_QS_MIN) {
-                //TODO:comment by
                 ENGINE_SET_INVALID_EVENT(p, IPV4_OPT_INVALID_LEN);
                 return -1;
             }
@@ -152,16 +152,6 @@ static int IPV4OptValidateCIPSO(Packet *p, const IPV4Opt *o)
 //    doi = *o->data;
     tag = o->data + 4;
     len = o->len - 1 - 1 - 4; /* Length of tags after header */
-
-
-#if 0
-    /* Domain of Interest (DOI) of 0 is reserved and thus invalid */
-    /** \todo Aparently a DOI of zero is fine in practice - verify. */
-    if (doi == 0) {
-        ENGINE_SET_EVENT(p,IPV4_OPT_MALFORMED);
-        return -1;
-    }
-#endif
 
     /* NOTE: We know len has passed min tests prior to this call */
 
@@ -460,7 +450,7 @@ int DecodeIPV4(Packet *p,const uint8_t *pkt, uint16_t len)
 
     /* If a fragment, pass off for re-assembly. */
     /*if (unlikely(IPV4_GET_IPOFFSET(p) > 0 || IPV4_GET_MF(p) == 1)) {
-        Packet *rp = Defrag(tv, dtv, p);
+        Packet *rp = Defrag(p);
         if (rp != NULL) {
             PacketEnqueueNoLock(&tv->decode_pq, rp);
         }

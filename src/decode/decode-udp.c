@@ -1,6 +1,5 @@
 #include "decode-udp.h"
 #include "decode.h"
-#include "dpi/tm-threads-common.h"
 
 static int DecodeUDPPacket(Packet *p, const uint8_t *pkt, uint16_t len)
 {

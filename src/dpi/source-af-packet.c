@@ -8,6 +8,7 @@
 #include <sys/ioctl.h>
 #include <sys/mman.h>
 #include <sys/poll.h>
+#include <linux/sockios.h>
 
 #define __USE_GNU
 #include <bits/poll.h>
@@ -365,9 +366,7 @@ TmEcode ReceiveAFPThreadInit(ThreadVars *tv, const void *initdata, void **data)
 
 static inline void AFPReadApplyBypass(const AFPThreadVars *ptv, Packet *p)
 {
-  if (ptv->flags & AFP_BYPASS) {
-    //p->BypassPacketsFlow = AFPBypassCallback;
-  }
+
 }
 
 static int AFPGetDevFlags(int fd, const char *ifname)
@@ -806,65 +805,170 @@ static bool AFPReadFromRingSetupPacket(
 
 static int AFPReadFromRing(AFPThreadVars *ptv)
 {
-  union thdr h;
-  bool emergency_flush = false;
-  const unsigned int start_pos = ptv->frame_offset;
+    union thdr h;
+    bool emergency_flush = false;
+    const unsigned int start_pos = ptv->frame_offset;
 
-  /* poll() told us there are frames, so lets wait for at least
-     * one frame to become available. */
-  if (AFPReadFromRingWaitForPacket(ptv) != AFP_READ_OK)
-    return AFP_READ_FAILURE;
+    /* poll() told us there are frames, so lets wait for at least
+       * one frame to become available. */
+    if (AFPReadFromRingWaitForPacket(ptv) != AFP_READ_OK)
+        return AFP_READ_FAILURE;
 
-  /* process the frames in the ring */
-  while (1) {
-    h.raw = (((union thdr **)ptv->ring.v2)[ptv->frame_offset]);
-    if (unlikely(h.raw == NULL)) {
-      return AFP_READ_FAILURE;
-    }
-    const unsigned int tp_status = h.h2->tp_status;
-    /* if we find a kernel frame we are done */
-    if (unlikely(tp_status == TP_STATUS_KERNEL)) {
-      break;
-    }
-    /* if in autofp mode the frame is still busy, return to poll */
-    if (unlikely(FRAME_BUSY(tp_status))) {
-      break;
-    }
-    emergency_flush |= ((tp_status & TP_STATUS_LOSING) != 0);
+    /* process the frames in the ring */
+    while (1) {
+        h.raw = (((union thdr **)ptv->ring.v2)[ptv->frame_offset]);
+        if (unlikely(h.raw == NULL)) {
+            return AFP_READ_FAILURE;
+        }
+        const unsigned int tp_status = h.h2->tp_status;
+        /* if we find a kernel frame we are done */
+        if (unlikely(tp_status == TP_STATUS_KERNEL)) {
+            break;
+        }
+        /* if in autofp mode the frame is still busy, return to poll */
+        if (unlikely(FRAME_BUSY(tp_status))) {
+            break;
+        }
+        emergency_flush |= ((tp_status & TP_STATUS_LOSING) != 0);
 
-    if ((ptv->flags & AFP_EMERGENCY_MODE) && emergency_flush) {
-      h.h2->tp_status = TP_STATUS_KERNEL;
-      goto next_frame;
+        if ((ptv->flags & AFP_EMERGENCY_MODE) && emergency_flush) {
+            h.h2->tp_status = TP_STATUS_KERNEL;
+            goto next_frame;
+        }
+
+        Packet *p = PacketGetFromQueueOrAlloc();
+        if (p == NULL) {
+            return AFPSuriFailure(ptv, h);
+        }
+        if (AFPReadFromRingSetupPacket(ptv, h, tp_status, p) == false) {
+            TmqhOutputPacketpool(ptv->tv, p);
+            return AFPSuriFailure(ptv, h);
+        }
+        /* release frame if not in zero copy mode */
+        if (!(ptv->flags & AFP_ZERO_COPY)) {
+            h.h2->tp_status = TP_STATUS_KERNEL;
+        }
+
+        if (TmThreadsSlotProcessPkt(ptv->tv, ptv->slot, p) != TM_ECODE_OK) {
+            return AFPSuriFailure(ptv, h);
+        }
+        next_frame:
+        if (++ptv->frame_offset >= ptv->req.v2.tp_frame_nr) {
+            ptv->frame_offset = 0;
+            /* Get out of loop to be sure we will reach maintenance tasks */
+            if (ptv->frame_offset == start_pos)
+                break;
+        }
+    }
+    if (emergency_flush) {
+        //AFPDumpCounters(ptv);
+    }
+    return (AFP_READ_OK);
+}
+
+static int AFPRead(AFPThreadVars *ptv)
+{
+    Packet *p = NULL;
+    /* XXX should try to use read that get directly to packet */
+    int offset = 0;
+    int caplen;
+    struct sockaddr_ll from;
+    struct iovec iov;
+    struct msghdr msg;
+    struct cmsghdr *cmsg;
+    union {
+        struct cmsghdr cmsg;
+        char buf[CMSG_SPACE(sizeof(struct tpacket_auxdata))];
+    } cmsg_buf;
+    unsigned char aux_checksum = 0;
+
+    msg.msg_name = &from;
+    msg.msg_namelen = sizeof(from);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = &cmsg_buf;
+    msg.msg_controllen = sizeof(cmsg_buf);
+    msg.msg_flags = 0;
+
+    //TODO:modify by haolipeng,hard coding offset to 0
+    /*if (ptv->cooked)
+        offset = SLL_HEADER_LEN;
+    else
+        offset = 0;*/
+    offset = 0;
+
+    iov.iov_len = ptv->datalen - offset;
+    iov.iov_base = ptv->data + offset;
+
+    caplen = recvmsg(ptv->socket, &msg, MSG_TRUNC);
+
+    if (caplen < 0) {
+        SCLogWarning(SC_ERR_AFP_READ, "recvmsg failed with error code %" PRId32,
+                     errno);
+        return AFP_READ_FAILURE;
     }
 
-    Packet *p = PacketGetFromQueueOrAlloc();
+    p = PacketGetFromQueueOrAlloc();
     if (p == NULL) {
-      return AFPSuriFailure(ptv, h);
+        return AFP_SURI_FAILURE;
     }
-    if (AFPReadFromRingSetupPacket(ptv, h, tp_status, p) == false) {
-      TmqhOutputPacketpool(ptv->tv, p);
-      return AFPSuriFailure(ptv, h);
+    PKT_SET_SRC(p, PKT_SRC_WIRE);
+    /* get timestamp of packet via ioctl */
+    if (ioctl(ptv->socket, SIOCGSTAMP, &p->ts) == -1) {
+        SCLogWarning(SC_ERR_AFP_READ, "recvmsg failed with error code %" PRId32,
+                     errno);
+        TmqhOutputPacketpool(ptv->tv, p);
+        return AFP_READ_FAILURE;
     }
-    /* release frame if not in zero copy mode */
-    if (!(ptv->flags & AFP_ZERO_COPY)) {
-      h.h2->tp_status = TP_STATUS_KERNEL;
+
+    ptv->pkts++;
+    p->livedev = ptv->livedev;
+
+    /* add forged header */
+    if (ptv->cooked) {
+        //TODO:modify by haolipeng
+        //SllHdr * hdrp = (SllHdr *)ptv->data;
+        /* XXX this is minimalist, but this seems enough */
+        //hdrp->sll_protocol = from.sll_protocol;
+    }
+
+    p->datalink = ptv->datalink;
+    SET_PKT_LEN(p, caplen + offset);
+    if (PacketCopyData(p, ptv->data, GET_PKT_LEN(p)) == -1) {
+        TmqhOutputPacketpool(ptv->tv, p);
+        return (AFP_SURI_FAILURE);
+    }
+    SCLogDebug("pktlen: %" PRIu32 " (pkt %p, pkt data %p)",
+               GET_PKT_LEN(p), p, GET_PKT_DATA(p));
+
+    /* We only check for checksum disable */
+    if (ptv->checksum_mode == CHECKSUM_VALIDATION_DISABLE) {
+        p->flags |= PKT_IGNORE_CHECKSUM;
+    } else {
+        aux_checksum = 1;
+    }
+
+    /* List is NULL if we don't have activated auxiliary data */
+    for (cmsg = CMSG_FIRSTHDR(&msg); cmsg; cmsg = CMSG_NXTHDR(&msg, cmsg)) {
+        struct tpacket_auxdata *aux;
+
+        if (cmsg->cmsg_len < CMSG_LEN(sizeof(struct tpacket_auxdata)) ||
+            cmsg->cmsg_level != SOL_PACKET ||
+            cmsg->cmsg_type != PACKET_AUXDATA)
+            continue;
+
+        aux = (struct tpacket_auxdata *)CMSG_DATA(cmsg);
+
+        if (aux_checksum && (aux->tp_status & TP_STATUS_CSUMNOTREADY)) {
+            p->flags |= PKT_IGNORE_CHECKSUM;
+        }
+        break;
     }
 
     if (TmThreadsSlotProcessPkt(ptv->tv, ptv->slot, p) != TM_ECODE_OK) {
-      return AFPSuriFailure(ptv, h);
+        return AFP_SURI_FAILURE;
     }
-  next_frame:
-    if (++ptv->frame_offset >= ptv->req.v2.tp_frame_nr) {
-      ptv->frame_offset = 0;
-      /* Get out of loop to be sure we will reach maintenance tasks */
-      if (ptv->frame_offset == start_pos)
-        break;
-    }
-  }
-  if (emergency_flush) {
-    //AFPDumpCounters(ptv);
-  }
-  return (AFP_READ_OK);
+    return AFP_READ_OK;
 }
 
 static int AFPSynchronizeStart(AFPThreadVars *ptv, uint64_t *discarded_pkts)
@@ -957,8 +1061,7 @@ TmEcode ReceiveAFPLoop(ThreadVars *tv, void *data, void *slot)
             AFPReadFunc = AFPReadFromRing;
         }
     } else {
-        //TODO:modify by haolipeng
-        //AFPReadFunc = AFPRead;
+        AFPReadFunc = AFPRead;
     }
 
     if (ptv->afp_state == AFP_STATE_DOWN) {

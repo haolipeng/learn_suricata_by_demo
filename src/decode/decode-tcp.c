@@ -1,7 +1,5 @@
 #include "decode-tcp.h"
 #include "decode.h"
-#include "dpi/dpi_module.h"
-#include "dpi/tm-threads-common.h"
 
 #define SET_OPTS(dst, src) \
     (dst).type = (src).type; \

@@ -8,7 +8,6 @@
 #include "base.h"
 #include "utils/timer_queue.h"
 
-//TODO:need to back to main.h file?
 typedef struct dp_stats_ {
     uint64_t rx;//接收字节数
     uint64_t rx_drops;//接收字节的丢包数
