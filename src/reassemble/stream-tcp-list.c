@@ -134,7 +134,7 @@ static int DoInsertSegment (TcpStream *stream, TcpSegment *seg, TcpSegment **dup
         SCLogDebug("not inserting: SEQ+payload %"PRIu32", last_ack %"PRIu32", "
                    "base_seq %"PRIu32, (seg->seq + TCP_SEG_LEN(seg)),
                    stream->last_ack, stream->base_seq);
-        //StreamTcpSetEvent(p, STREAM_REASSEMBLY_SEGMENT_BEFORE_BASE_SEQ);
+        StreamTcpSetEvent(p, STREAM_REASSEMBLY_SEGMENT_BEFORE_BASE_SEQ);
         return -1;
     }
 

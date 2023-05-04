@@ -19,6 +19,7 @@
 #include "dpi/main.h"
 #include "reassemble/stream-tcp.h"
 #include "utils/util-misc.h"
+#include "dpi/source-pcap-file.h"
 
 #define DEFAULT_CONF_FILE "/etc/suricata/suricata.yaml"
 #define DEFAULT_MAX_PENDING_PACKETS 1024
@@ -120,7 +121,7 @@ void ParseCommandLine(int argc, char **argv,SCInstance *suri){
     int arg = 0;
 
     while (arg != -1) {
-        arg = getopt(argc, argv, "hd:i:v:c:j:p:");
+        arg = getopt(argc, argv, "hd:i:v:c:j:r:");
 
         switch (arg) {
             case -1:
@@ -146,12 +147,20 @@ void ParseCommandLine(int argc, char **argv,SCInstance *suri){
             case 'v':
                 g_virtual_iface = strdup(optarg);
                 break;
-            case 'p':
+            case 'r':
+                if (suri->run_mode == RUNMODE_UNKNOWN) {
+                    suri->run_mode = RUNMODE_PCAP_FILE;
+                } else {
+                    SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode "
+                                                         "has been specified");
+                    help(argv[0]);
+                    break;
+                }
                 g_pcap_path = optarg;
                 break;
             case 'h':
             default:
-                //help(argv[0]);
+                help(argv[0]);
                 exit(-2);
         }
     }
@@ -168,6 +177,10 @@ void RegisterAllModules(void)
     /* managers */
     TmModuleFlowManagerRegister();
     TmModuleFlowRecyclerRegister();
+
+    /* pcap file */
+    TmModuleReceivePcapFileRegister();
+    TmModuleDecodePcapFileRegister();
 
     /* af-packet */
     TmModuleReceiveAFPRegister();
@@ -247,7 +260,7 @@ int PostConfLoadedSetup(SCInstance *suri)
 
     //TODO:need to do
     //if (ConfigGetCaptureValue(suri) != TM_ECODE_OK) {
-    //    SCReturnInt(TM_ECODE_FAILED);
+    //    return (TM_ECODE_FAILED);
     //}
 
     TmqhSetup();
@@ -303,6 +316,11 @@ static void SuricataMainLoop(SCInstance *suri)
 void EngineDone(void)
 {
     suricata_ctl_flags |= SURICATA_DONE;
+}
+
+void EngineStop(void)
+{
+    suricata_ctl_flags |= SURICATA_STOP;
 }
 
 int main(int argc, char *argv[])

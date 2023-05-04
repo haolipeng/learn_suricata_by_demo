@@ -12,6 +12,7 @@ enum {
     SURICATA_DEINIT
 };
 
+extern volatile uint8_t suricata_ctl_flags;
 /* runtime engine control flags */
 #define SURICATA_STOP    (1 << 0)   /**< gracefully stop the engine: process all
                                      outstanding packets first */
@@ -61,4 +62,5 @@ typedef struct SCInstance_ {
 } SCInstance;
 
 void EngineDone(void);
+void EngineStop(void);
 #endif //NET_THREAT_DETECT_MAIN_H

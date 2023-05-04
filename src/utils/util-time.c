@@ -1,5 +1,6 @@
 #include "dpi/threads.h"
 #include "util-debug.h"
+#include "dpi/tm-threads.h"
 #include <stdbool.h>
 #include <sys/time.h>
 
@@ -43,11 +44,15 @@ void TimeGet(struct timeval *tv) {
              (uintmax_t)tv->tv_sec, (uintmax_t)tv->tv_usec);
 }
 
-/*
- * Time Caching code
- */
-
 struct tm *SCLocalTime(time_t timep, struct tm *result)
 {
     return localtime_r(&timep, result);
+}
+
+void TimeSetByThread(const int thread_id, const struct timeval *tv)
+{
+    if (live_time_tracking)
+        return;
+
+    TmThreadsSetThreadTimestamp(thread_id, tv);
 }

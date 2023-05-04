@@ -213,6 +213,17 @@ enum TcpState
     } while(0); \
 }
 
+#define StreamTcpSetEvent(p, e) {                                           \
+    if ((p)->flags & PKT_STREAM_NO_EVENTS) {                                \
+        SCLogDebug("not setting event %d on pkt %p (%"PRIu64"), "     \
+                   "stream in known bad condition", (e), p, (p)->pcap_cnt); \
+    } else {                                                                \
+        SCLogDebug("setting event %d on pkt %p (%"PRIu64")",          \
+                    (e), p, (p)->pcap_cnt);                                 \
+        ENGINE_SET_EVENT((p), (e));                                         \
+    }                                                                       \
+}
+
 typedef struct TcpSession_ {
     PoolThreadReserved res;             //PoolThread使用的的id号 modify by haolipeng
     uint8_t state:4;                        /**< tcp state from state enum 会话状态*/

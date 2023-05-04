@@ -4,6 +4,7 @@
 #include "decode/decode.h"
 #include "utils/util-atomic.h"
 #include "dpi/threads.h"
+#include "utils/packet-queue.h"
 
 /* Return stack, onto which other threads free packets. */
 typedef struct PktPoolLockedStack_{
@@ -41,6 +42,8 @@ typedef struct PktPool_ {
 
 Packet *TmqhInputPacketpool(ThreadVars *);
 void TmqhOutputPacketpool(ThreadVars *, Packet *);
+void TmqhReleasePacketsToPacketPool(PacketQueue *pq);
+
 void TmqhPacketpoolRegister(void);
 Packet *PacketPoolGetPacket(void);
 void PacketPoolWait(void);

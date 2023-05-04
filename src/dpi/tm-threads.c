@@ -331,7 +331,7 @@ static TmEcode TmThreadSetSlots(ThreadVars *tv, const char *name, void *(*fn_p)(
     }
 
     if (strcmp(name, "varslot") == 0) {
-        //tv->tm_func = TmThreadsSlotVar;//TODO:modify by haolipeng,only for aufp runmode
+        //tv->tm_func = TmThreadsSlotVar;
     } else if (strcmp(name, "pktacqloop") == 0) {
         tv->tm_func = TmThreadsSlotPktAcqLoop;
     } else if (strcmp(name, "management") == 0) {
@@ -734,6 +734,121 @@ TmEcode TmThreadWaitOnThreadInit(void)
                                                                   "threads initialized, engine started.", ppt_num, mgt_num);
 
     return TM_ECODE_OK;
+}
+
+static inline void TmThreadsCleanDecodePQ(PacketQueueNoLock *pq)
+{
+    while (1) {
+        Packet *p = PacketDequeueNoLock(pq);
+        if (unlikely(p == NULL))
+            break;
+        TmqhOutputPacketpool(NULL, p);
+    }
+}
+
+static inline void TmThreadsSlotProcessPktFail(ThreadVars *tv, TmSlot *s, Packet *p)
+{
+    if (p != NULL) {
+        TmqhOutputPacketpool(tv, p);
+    }
+    TmThreadsCleanDecodePQ(&tv->decode_pq);
+    if (tv->stream_pq_local) {
+        SCMutexLock(&tv->stream_pq_local->mutex_q);
+        TmqhReleasePacketsToPacketPool(tv->stream_pq_local);
+        SCMutexUnlock(&tv->stream_pq_local->mutex_q);
+    }
+    TmThreadsSetFlag(tv, THV_FAILED);
+}
+
+static inline bool TmThreadsHandleInjectedPackets(ThreadVars *tv)
+{
+    PacketQueue *pq = tv->stream_pq_local;
+    if (pq && pq->len > 0) {
+        while (1) {
+            SCMutexLock(&pq->mutex_q);
+            Packet *extra_p = PacketDequeue(pq);
+            SCMutexUnlock(&pq->mutex_q);
+            if (extra_p == NULL)
+                break;
+            TmEcode r = TmThreadsSlotVarRun(tv, extra_p, tv->tm_flowworker);
+            if (r == TM_ECODE_FAILED) {
+                TmThreadsSlotProcessPktFail(tv, tv->tm_flowworker, extra_p);
+                break;
+            }
+            tv->tmqh_out(tv, extra_p);
+        }
+        return true;
+    } else {
+        return false;
+    }
+}
+
+static inline void TmThreadsCaptureInjectPacket(ThreadVars *tv, Packet *p)
+{
+    TmThreadsUnsetFlag(tv, THV_CAPTURE_INJECT_PKT);
+    if (p == NULL)
+        p = PacketGetFromQueueOrAlloc();
+    if (p != NULL) {
+        p->flags |= PKT_PSEUDO_STREAM_END;
+        PKT_SET_SRC(p, PKT_SRC_CAPTURE_TIMEOUT);
+        if (TmThreadsSlotProcessPkt(tv, tv->tm_flowworker, p) != TM_ECODE_OK) {
+            TmqhOutputPacketpool(tv, p);
+        }
+    }
+}
+
+static inline void TmThreadsCaptureHandleTimeout(ThreadVars *tv, Packet *p)
+{
+    if (TmThreadsCheckFlag(tv, THV_CAPTURE_INJECT_PKT)) {
+        TmThreadsCaptureInjectPacket(tv, p); /* consumes 'p' */
+        return;
+
+    } else {
+        if (TmThreadsHandleInjectedPackets(tv) == false) {
+            /* see if we have to do some house keeping */
+            if (tv->flow_queue && SC_ATOMIC_GET(tv->flow_queue->non_empty) == true) {
+                TmThreadsCaptureInjectPacket(tv, p); /* consumes 'p' */
+                return;
+            }
+        }
+    }
+
+    /* packet could have been passed to us that we won't use
+     * return it to the pool. */
+    if (p != NULL)
+        tv->tmqh_out(tv, p);
+}
+
+void TmThreadsSetThreadTimestamp(const int id, const struct timeval *ts)
+{
+    SCMutexLock(&thread_store_lock);
+    if (unlikely(id <= 0 || id > (int)thread_store.threads_size)) {
+        SCMutexUnlock(&thread_store_lock);
+        return;
+    }
+
+    int idx = id - 1;
+    Thread *t = &thread_store.threads[idx];
+    t->pktts = *ts;
+    struct timeval systs;
+    gettimeofday(&systs, NULL);
+    t->sys_sec_stamp = (uint32_t)systs.tv_sec;
+    SCMutexUnlock(&thread_store_lock);
+}
+
+void TmThreadsInitThreadsTimestamp(const struct timeval *ts)
+{
+    struct timeval systs;
+    gettimeofday(&systs, NULL);
+    SCMutexLock(&thread_store_lock);
+    for (size_t s = 0; s < thread_store.threads_size; s++) {
+        Thread *t = &thread_store.threads[s];
+        if (!t->in_use)
+            break;
+        t->pktts = *ts;
+        t->sys_sec_stamp = (uint32_t)systs.tv_sec;
+    }
+    SCMutexUnlock(&thread_store_lock);
 }
 
 #define STEP 32

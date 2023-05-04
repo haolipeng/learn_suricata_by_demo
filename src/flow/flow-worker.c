@@ -7,6 +7,7 @@
 #include "reassemble/stream.h"
 #include "dpi/tmqh-packetpool.h"
 #include "dpi/tm-modules.h"
+#include "utils/util-time.h"
 #include <stdint.h>
 
 typedef DetectEngineThreadCtx* DetectEngineThreadCtxPtr;
@@ -391,8 +392,7 @@ TmEcode FlowWorker(ThreadVars *tv, Packet *p, void *data)
 
     /* update time */
     if (!(PKT_IS_PSEUDOPKT(p))) {
-        //TODO:time set modify by haolipeng
-        //TimeSetByThread(tv->id, &p->ts);
+        TimeSetByThread(tv->id, &p->ts);
     }
 
     /* handle Flow 处理flow数据流*/

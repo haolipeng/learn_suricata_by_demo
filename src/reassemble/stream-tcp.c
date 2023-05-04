@@ -2033,6 +2033,7 @@ void StreamTcpInitConfig(char quiet)
     SC_ATOMIC_INIT(stream_config.memcap);
     SC_ATOMIC_INIT(stream_config.reassembly_memcap);
 
+    //最大会话数
     if ((ConfGetInt("stream.max-sessions", &value)) == 1) {
         SCLogWarning(SC_WARN_OPTION_OBSOLETE, "max-sessions is obsolete. "
                                               "Number of concurrent sessions is now only limited by Flow and "

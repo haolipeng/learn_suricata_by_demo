@@ -99,7 +99,7 @@ add_executable(net_threat_detect
         src/dpi/runmodes.c src/dpi/runmodes.h
         src/dpi/runmode-pcap-file.h src/dpi/runmode-pcap-file.c
         src/utils/conf-yaml-loader.c src/utils/conf-yaml-loader.h
-        src/decode/decode-ipv6.c)
+        src/decode/decode-ipv6.c src/dpi/source-pcap-file.h src/dpi/source-pcap-file.c src/dpi/source-pcap-file-helper.h src/dpi/source-pcap-file-helper.c src/dpi/source-pcap-file-directory-helper.h src/dpi/source-pcap-file-directory-helper.c)
 
 target_link_libraries(net_threat_detect
         pthread

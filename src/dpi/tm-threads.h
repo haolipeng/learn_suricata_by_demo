@@ -53,6 +53,8 @@ void TmThreadContinueThreads(void);
 void TmThreadCheckThreadState(void);
 static int TmThreadTimeoutLoop(ThreadVars *tv, TmSlot *s);
 
+void TmThreadsInitThreadsTimestamp(const struct timeval *ts);
+void TmThreadsSetThreadTimestamp(const int id, const struct timeval *ts);
 int TmThreadsRegisterThread(ThreadVars *tv, const int type);
 ThreadVars *TmThreadCreate(const char *name, const char *inq_name, const char *inqh_name,
                            const char *outq_name, const char *outqh_name, const char *slots,
@@ -70,4 +72,6 @@ TmEcode TmThreadSpawn(ThreadVars *tv);
 TmEcode TmThreadsSlotVarRun (ThreadVars *tv, Packet *p, TmSlot *slot);
 TmEcode TmThreadsSlotProcessPkt(ThreadVars *tv, TmSlot *s, Packet *p);
 TmEcode TmThreadWaitOnThreadInit(void);
+
+
 #endif // NET_THREAT_DETECT_TM_THREADS_H
