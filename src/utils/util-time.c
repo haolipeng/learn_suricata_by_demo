@@ -56,3 +56,9 @@ void TimeSetByThread(const int thread_id, const struct timeval *tv)
 
     TmThreadsSetThreadTimestamp(thread_id, tv);
 }
+
+void TimeModeSetOffline (void)
+{
+    live_time_tracking = false;
+    SCLogDebug("offline time mode enabled");
+}

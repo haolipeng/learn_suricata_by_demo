@@ -9,6 +9,7 @@ void TimeDeinit(void);
 
 void TimeSetByThread(const int thread_id, const struct timeval *tv);
 void TimeGet(struct timeval *);
+void TimeModeSetOffline (void);
 
 /** \brief intialize a 'struct timespec' from a 'struct timeval'. */
 #define FROM_TIMEVAL(timev) { .tv_sec = (timev).tv_sec, .tv_nsec = (timev).tv_usec * 1000 }

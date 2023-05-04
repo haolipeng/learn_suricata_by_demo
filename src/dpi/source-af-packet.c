@@ -1238,42 +1238,41 @@ static int AFPComputeRingParams(AFPThreadVars *ptv, int order)
 #ifdef HAVE_TPACKET_V3
 static int AFPComputeRingParamsV3(AFPThreadVars *ptv)
 {
-  ptv->req.v3.tp_block_size = ptv->block_size;
-  ptv->req.v3.tp_frame_size = 2048;
-  int frames_per_block = 0;
-  int tp_hdrlen = sizeof(struct tpacket3_hdr);
-  int snaplen = default_packet_size;
+    ptv->req.v3.tp_block_size = ptv->block_size;
+    ptv->req.v3.tp_frame_size = 2048;
+    int frames_per_block = 0;
+    int tp_hdrlen = sizeof(struct tpacket3_hdr);
+    int snaplen = default_packet_size;
 
-  if (snaplen == 0) {
-    //TODO:modify
-    //snaplen = GetIfaceMaxPacketSize(ptv->iface);
-    if (snaplen <= 0) {
-      SCLogWarning(SC_ERR_INVALID_VALUE,
-                   "Unable to get MTU, setting snaplen to sane default of 1514");
-      snaplen = 1514;
+    if (snaplen == 0) {
+        //snaplen = GetIfaceMaxPacketSize(ptv->iface);
+        if (snaplen <= 0) {
+            SCLogWarning(SC_ERR_INVALID_VALUE,
+                         "Unable to get MTU, setting snaplen to sane default of 1514");
+            snaplen = 1514;
+        }
     }
-  }
 
-  ptv->req.v3.tp_frame_size = TPACKET_ALIGN(snaplen +TPACKET_ALIGN(TPACKET_ALIGN(tp_hdrlen) + sizeof(struct sockaddr_ll) + ETH_HLEN) - ETH_HLEN);
-  frames_per_block = ptv->req.v3.tp_block_size / ptv->req.v3.tp_frame_size;
+    ptv->req.v3.tp_frame_size = TPACKET_ALIGN(snaplen +TPACKET_ALIGN(TPACKET_ALIGN(tp_hdrlen) + sizeof(struct sockaddr_ll) + ETH_HLEN) - ETH_HLEN);
+    frames_per_block = ptv->req.v3.tp_block_size / ptv->req.v3.tp_frame_size;
 
-  if (frames_per_block == 0) {
-    SCLogError(SC_ERR_INVALID_VALUE,
-               "Block size is too small, it should be at least %d",
-               ptv->req.v3.tp_frame_size);
-    return -1;
-  }
-  ptv->req.v3.tp_block_nr = ptv->ring_size / frames_per_block + 1;
-  /* exact division */
-  ptv->req.v3.tp_frame_nr = ptv->req.v3.tp_block_nr * frames_per_block;
-  ptv->req.v3.tp_retire_blk_tov = ptv->block_timeout;
-  ptv->req.v3.tp_feature_req_word = TP_FT_REQ_FILL_RXHASH;
-  SCLogPerf("AF_PACKET V3 RX Ring params: block_size=%d block_nr=%d frame_size=%d frame_nr=%d (mem: %d)",
-            ptv->req.v3.tp_block_size, ptv->req.v3.tp_block_nr,
-            ptv->req.v3.tp_frame_size, ptv->req.v3.tp_frame_nr,
-            ptv->req.v3.tp_block_size * ptv->req.v3.tp_block_nr
-  );
-  return 1;
+    if (frames_per_block == 0) {
+        SCLogError(SC_ERR_INVALID_VALUE,
+                   "Block size is too small, it should be at least %d",
+                   ptv->req.v3.tp_frame_size);
+        return -1;
+    }
+    ptv->req.v3.tp_block_nr = ptv->ring_size / frames_per_block + 1;
+    /* exact division */
+    ptv->req.v3.tp_frame_nr = ptv->req.v3.tp_block_nr * frames_per_block;
+    ptv->req.v3.tp_retire_blk_tov = ptv->block_timeout;
+    ptv->req.v3.tp_feature_req_word = TP_FT_REQ_FILL_RXHASH;
+    SCLogPerf("AF_PACKET V3 RX Ring params: block_size=%d block_nr=%d frame_size=%d frame_nr=%d (mem: %d)",
+              ptv->req.v3.tp_block_size, ptv->req.v3.tp_block_nr,
+              ptv->req.v3.tp_frame_size, ptv->req.v3.tp_frame_nr,
+              ptv->req.v3.tp_block_size * ptv->req.v3.tp_block_nr
+    );
+    return 1;
 }
 #endif
 

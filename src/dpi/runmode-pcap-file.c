@@ -4,6 +4,9 @@
 #include "runmodes.h"
 #include "tm-threads.h"
 #include "tm-modules.h"
+#include "utils/conf.h"
+#include "source-pcap-file.h"
+#include "utils/util-time.h"
 
 const char *RunModeFilePcapGetDefaultMode(void)
 {
@@ -27,6 +30,12 @@ int RunModeFilePcapSingle(void)
 {
     const char *file = NULL;
     char tname[TM_THREAD_NAME_MAX];
+    if (ConfGet("pcap-file.file", &file) == 0) {
+        FatalError(SC_ERR_FATAL, "Failed retrieving pcap-file from Conf");
+    }
+
+    TimeModeSetOffline();
+    PcapFileGlobalInit();
 
     const char *thread_name_single = "W";
     snprintf(tname, sizeof(tname), "%s#01", thread_name_single);

@@ -304,15 +304,15 @@ ConfNode *ConfGetNode(const char *name)
 
 int ConfGet(const char *name, const char **vptr)
 {
-  ConfNode *node = ConfGetNode(name);
-  if (node == NULL) {
-    SCLogDebug("failed to lookup configuration parameter '%s'", name);
-    return 0;
-  }
-  else {
-    *vptr = node->val;
-    return 1;
-  }
+    ConfNode *node = ConfGetNode(name);
+    if (node == NULL) {
+        SCLogDebug("failed to lookup configuration parameter '%s'", name);
+        return 0;
+    }
+    else {
+        *vptr = node->val;
+        return 1;
+    }
 }
 
 int ConfGetValue(const char *name, const char **vptr)

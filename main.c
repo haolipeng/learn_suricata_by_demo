@@ -5,6 +5,7 @@
 #include <stdio.h>
 #include <sys/time.h>
 #include <bits/types/sig_atomic_t.h>
+#include <sys/stat.h>
 
 #include "base.h"
 #include "utils/conf-yaml-loader.h"
@@ -53,16 +54,6 @@ volatile uint8_t suricata_ctl_flags = 0;
 
 /** Suricata instance */
 SCInstance suricata;
-
-static void help(const char *prog)
-{
-    printf("%s:\n", prog);
-    printf("  h: help\n");
-    printf("  i: specify the physical interface to capture traffic\n");
-    printf("  c: specify the virtual interface to capture traffic\n");
-    printf("  d: debug flags(none, all, error, packet, session, timer, tcp, parser, log)\n");
-    printf("  p: pcap file or directory\n");
-}
 
 static void SCInstanceInit(SCInstance *suri, const char *progname)
 {
@@ -117,28 +108,24 @@ static int ParseCommandLineAfpacket(SCInstance *suri, const char *in_arg)
   return TM_ECODE_OK;
 }
 
-void ParseCommandLine(int argc, char **argv,SCInstance *suri){
+static int ParseCommandLine(int argc, char **argv,SCInstance *suri){
     int arg = 0;
 
     while (arg != -1) {
-        arg = getopt(argc, argv, "hd:i:v:c:j:r:");
+        arg = getopt(argc, argv, "h:i:v:c:j:r:");
 
         switch (arg) {
             case -1:
                 break;
-            case 'd':
-                //设置debug等级 info,warning,error
-                if (strcasecmp(optarg, "none") == 0) {
-                    //TODO:
-                }
-                break;
             case 'i':
                 if(NULL == optarg){
                     SCLogError(SC_ERR_INITIALIZATION, "no option argument for -i");
+                    return TM_ECODE_FAILED;
                 }
                 g_in_iface = strdup(optarg);//设置网口
                 if (ParseCommandLineAfpacket(&suricata, g_in_iface) != TM_ECODE_OK) {
                     SCLogError(SC_ERR_INITIALIZATION, "parse af-packet for -i interface failed!");
+                    return TM_ECODE_FAILED;
                 }
                 break;
             case 'c':
@@ -151,22 +138,32 @@ void ParseCommandLine(int argc, char **argv,SCInstance *suri){
                 if (suri->run_mode == RUNMODE_UNKNOWN) {
                     suri->run_mode = RUNMODE_PCAP_FILE;
                 } else {
-                    SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode "
-                                                         "has been specified");
-                    help(argv[0]);
-                    break;
+                    SCLogError(SC_ERR_MULTIPLE_RUN_MODE, "more than one run mode has been specified");
+                    return TM_ECODE_FAILED;
                 }
                 g_pcap_path = optarg;
+
+                struct stat buf;
+                if (stat(optarg, &buf) != 0) {
+                    SCLogError(SC_ERR_INITIALIZATION, "ERROR: Pcap file does not exist\n");
+                    return TM_ECODE_FAILED;
+                }
+                if (ConfSetFinal("pcap-file.file", optarg) != 1) {
+                    SCLogError(SC_ERR_INITIALIZATION, "ERROR: Failed to set pcap-file.file\n");
+                    return TM_ECODE_FAILED;
+                }
+
                 break;
             case 'h':
             default:
-                help(argv[0]);
                 exit(-2);
         }
     }
 
     /* save the runmode from the commandline (if any) */
     suri->aux_run_mode = suri->run_mode;
+
+    return TM_ECODE_OK;
 }
 
 void RegisterAllModules(void)
