@@ -3,6 +3,8 @@
 #include "stream-tcp-private.h"
 #include "stream-tcp.h"
 #include "stream.h"
+#include "utils/conf.h"
+#include "utils/util-byte.h"
 #include <string.h>
 
 #ifdef DEBUG
@@ -284,48 +286,46 @@ int StreamTcpAppLayerIsDisabled(Flow *f)
   return (ssn->flags & STREAMTCP_FLAG_APP_LAYER_DISABLED);
 }
 
-/*static int StreamTcpReassemblyConfig(char quiet)
+static int StreamTcpReassemblyConfig(char quiet)
 {
-  uint32_t segment_prealloc = 2048;
-  ConfNode *seg = ConfGetNode("stream.reassembly.segment-prealloc");
-  if (seg) {
-    uint32_t prealloc = 0;
-    if (StringParseUint32(&prealloc, 10, strlen(seg->val), seg->val) < 0)
-    {
-      SCLogError(SC_ERR_INVALID_ARGUMENT, "segment-prealloc of "
-                                          "%s is invalid", seg->val);
-      return -1;
+    uint32_t segment_prealloc = 2048;
+    ConfNode *seg = ConfGetNode("stream.reassembly.segment-prealloc");
+    if (seg) {
+        uint32_t prealloc = 0;
+        if (StringParseUint32(&prealloc, 10, strlen(seg->val), seg->val) < 0)
+        {
+            SCLogError(SC_ERR_INVALID_ARGUMENT, "segment-prealloc of %s is invalid", seg->val);
+            return -1;
+        }
+        segment_prealloc = prealloc;
     }
-    segment_prealloc = prealloc;
-  }
-  if (!quiet)
-    SCLogConfig("stream.reassembly \"segment-prealloc\": %u", segment_prealloc);
-  stream_config.prealloc_segments = segment_prealloc;
+    if (!quiet)
+        SCLogConfig("stream.reassembly \"segment-prealloc\": %u", segment_prealloc);
+    stream_config.prealloc_segments = segment_prealloc;
 
-  int overlap_diff_data = 0;
-  ConfGetBool("stream.reassembly.check-overlap-different-data", &overlap_diff_data);
-  if (overlap_diff_data) {
-    StreamTcpReassembleConfigEnableOverlapCheck();
-  }
+    int overlap_diff_data = 0;
+    ConfGetBool("stream.reassembly.check-overlap-different-data", &overlap_diff_data);
+    if (overlap_diff_data) {
+        StreamTcpReassembleConfigEnableOverlapCheck();
+    }
 
-  stream_config.sbcnf.flags = STREAMING_BUFFER_NOFLAGS;
-  stream_config.sbcnf.buf_size = 2048;
-  stream_config.sbcnf.Malloc = ReassembleMalloc;
-  stream_config.sbcnf.Calloc = ReassembleCalloc;
-  stream_config.sbcnf.Realloc = ReassembleRealloc;
-  stream_config.sbcnf.Free = ReassembleFree;
+    stream_config.sbcnf.flags = STREAMING_BUFFER_NOFLAGS;
+    stream_config.sbcnf.buf_size = 2048;
+    stream_config.sbcnf.Malloc = ReassembleMalloc;
+    stream_config.sbcnf.Calloc = ReassembleCalloc;
+    stream_config.sbcnf.Realloc = ReassembleRealloc;
+    stream_config.sbcnf.Free = ReassembleFree;
 
-  return 0;
-}*/
+    return 0;
+}
 
 int StreamTcpReassembleInit(char quiet)
 {
   /* init the memcap/use tracker */
   StreamTcpReassembleInitMemuse();
 
-  //TODO:modify by haolipeng
-  /*if (StreamTcpReassemblyConfig(quiet) < 0)
-    return -1;*/
+  if (StreamTcpReassemblyConfig(quiet) < 0)
+    return -1;
 
   //TODO:modify by haolipeng
   //StatsRegisterGlobalCounter("tcp.reassembly_memuse",StreamTcpReassembleMemuseGlobalCounter);

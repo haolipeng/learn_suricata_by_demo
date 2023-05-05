@@ -13,6 +13,7 @@
 #include "utils/conf.h"
 #include "utils/util-misc.h"
 #include "utils/util-random.h"
+#include "utils/util-mem.h"
 
 #define STREAMTCP_DEFAULT_PREALLOC              2048
 #define STREAMTCP_DEFAULT_MEMCAP                (64 * 1024 * 1024)  /* 64mb */
@@ -1464,20 +1465,24 @@ invalid:
     return 0;
 }
 
-static TcpSession *StreamTcpNewSession (Packet *p)
+static TcpSession *StreamTcpNewSession (Packet *p,int id)
 {
     TcpSession *ssn = (TcpSession *)p->flow->protoctx;
     if(ssn == NULL) {
-        //TODO:后续改为从内存池申请
-        ssn = (TcpSession* )malloc(sizeof(TcpSession));
+        p->flow->protoctx = PoolThreadGetById(ssn_pool, id);
+        ssn = (TcpSession *)p->flow->protoctx;//convert void* to TcpSession *
+        if(ssn == NULL){
+            SCLogDebug("ssn_pool is empty");
+            return NULL;
+        }
 
         ssn->state = TCP_NONE;
-        ssn->reassembly_depth = 0;//TODO:modify by haolipeng,can read stream_config
+        ssn->reassembly_depth = stream_config.reassembly_depth;
         ssn->tcp_packet_flags = p->tcph ? p->tcph->th_flags : 0;
-        ssn->server.flags = 10;//TODO:modify by haolipeng,can read stream_config
-        ssn->client.flags = 10;//TODO:modify by haolipeng,can read stream_config
+        ssn->server.flags = stream_config.stream_init_flags;
+        ssn->client.flags = stream_config.stream_init_flags;
 
-        StreamingBuffer x = STREAMING_BUFFER_INITIALIZER(NULL);////TODO:modify by haolipeng,just assign NULL value
+        StreamingBuffer x = STREAMING_BUFFER_INITIALIZER(&stream_config.sbcnf);
         ssn->client.sb = x;
         ssn->server.sb = x;
 
@@ -1510,7 +1515,7 @@ static int StreamTcpPacketStateNone(ThreadVars *tv, Packet *p,
     /* SYN*/
     }else if (p->tcph->th_flags & TH_SYN) {
         if (ssn == NULL) {
-            ssn = StreamTcpNewSession(p);
+            ssn = StreamTcpNewSession(p,stt->ssn_pool_id);
             if (ssn == NULL) {
                 return -1;
             }
@@ -1561,7 +1566,7 @@ static int StreamTcpPacketStateNone(ThreadVars *tv, Packet *p,
         }
     }else if (p->tcph->th_flags & TH_ACK) {
         if (ssn == NULL) {
-            ssn = StreamTcpNewSession(p);
+            ssn = StreamTcpNewSession(p, stt->ssn_pool_id);
             if (ssn == NULL) {
                 return -1;
             }
@@ -2245,8 +2250,7 @@ void StreamTcpInitConfig(char quiet)
 
     const char *temp_stream_reassembly_depth_str;
     if (ConfGetValue("stream.reassembly.depth", &temp_stream_reassembly_depth_str) == 1) {
-        if (ParseSizeStringU32(temp_stream_reassembly_depth_str,
-                               &stream_config.reassembly_depth) < 0) {
+        if (ParseSizeStringU32(temp_stream_reassembly_depth_str,&stream_config.reassembly_depth) < 0) {
             SCLogError(SC_ERR_SIZE_PARSE, "Error parsing "
                                           "stream.reassembly.depth "
                                           "from conf file - %s.  Killing engine",
@@ -2581,15 +2585,13 @@ TmEcode StreamTcpThreadDeinit(ThreadVars *tv, void *data)
       return TM_ECODE_OK;
     }
 
-    /* XXX */
-
     /* free reassembly ctx */
     StreamTcpReassembleFreeThreadCtx(stt->ra_ctx);
 
     /* clear memory */
     memset(stt, 0, sizeof(StreamTcpThread));
 
-    free(stt);
+    SCFree(stt);
     return TM_ECODE_OK;
 }
 
