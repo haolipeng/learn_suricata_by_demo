@@ -36,6 +36,8 @@ static int StreamTcpValidateTimestamp (TcpSession *ssn, Packet *p);
 static int StreamTcpHandleFin(ThreadVars *tv, StreamTcpThread *, TcpSession *, Packet *, PacketQueueNoLock *);
 static inline int StreamTcpValidateAck(TcpSession *ssn, TcpStream *, Packet *);
 
+static int StreamTcp3whsQueueSynAck(TcpSession *ssn, Packet *p);
+
 #define OS_POLICY_DEFAULT   OS_POLICY_BSD
 
 void StreamTcpInitMemuse(void)
@@ -540,9 +542,8 @@ static int StreamTcpPacketStateSynRecv(ThreadVars *tv,Packet *p,StreamTcpThread 
                                                                    "%" PRIu32 " from stream", ssn, TCP_GET_SEQ(p),
                     ssn->client.isn);*/
 
-            //TODO:modify by haolipeng
-            //if (StreamTcp3whsQueueSynAck(ssn, p) == -1)
-            //    return -1;
+            if (StreamTcp3whsQueueSynAck(ssn, p) == -1)
+                return -1;
             SCLogDebug("ssn %p: queued different SYN/ACK", ssn);
         }
 
@@ -753,6 +754,63 @@ static int StreamTcpPacketStateSynRecv(ThreadVars *tv,Packet *p,StreamTcpThread 
         SCLogDebug("ssn %p: default case", ssn);
     }
 
+    return 0;
+}
+
+static TcpStateQueue *StreamTcp3whsFindSynAckBySynAck(TcpSession *ssn, Packet *p)
+{
+    TcpStateQueue *q = ssn->queue;
+    TcpStateQueue search;
+
+    StreamTcp3whsSynAckToStateQueue(p, &search);
+
+    while (q != NULL) {
+        if (search.flags == q->flags &&
+            search.wscale == q->wscale &&
+            search.win == q->win &&
+            search.seq == q->seq &&
+            search.ack == q->ack &&
+            search.ts == q->ts) {
+            return q;
+        }
+
+        q = q->next;
+    }
+
+    return q;
+}
+
+static int StreamTcp3whsQueueSynAck(TcpSession *ssn, Packet *p)
+{
+    /* first see if this is already in our list */
+    if (StreamTcp3whsFindSynAckBySynAck(ssn, p) != NULL)
+        return 0;
+
+    if (ssn->queue_len == stream_config.max_synack_queued) {
+        SCLogDebug("ssn %p: =~ SYN/ACK queue limit reached", ssn);
+        StreamTcpSetEvent(p, STREAM_3WHS_SYNACK_FLOOD);
+        return -1;
+    }
+
+    if (StreamTcpCheckMemcap((uint32_t)sizeof(TcpStateQueue)) == 0) {
+        SCLogDebug("ssn %p: =~ SYN/ACK queue failed: stream memcap reached", ssn);
+        return -1;
+    }
+
+    TcpStateQueue *q = malloc(sizeof(*q));
+    if (unlikely(q == NULL)) {
+        SCLogDebug("ssn %p: =~ SYN/ACK queue failed: alloc failed", ssn);
+        return -1;
+    }
+    memset(q, 0x00, sizeof(*q));
+    StreamTcpIncrMemuse((uint64_t)sizeof(TcpStateQueue));
+
+    StreamTcp3whsSynAckToStateQueue(p, q);
+
+    /* put in list */
+    q->next = ssn->queue;
+    ssn->queue = q;
+    ssn->queue_len++;
     return 0;
 }
 
