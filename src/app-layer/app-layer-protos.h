@@ -6,8 +6,6 @@
 enum AppProtoEnum {
     ALPROTO_UNKNOWN = 0,
     ALPROTO_HTTP,
-    ALPROTO_SMB,
-    ALPROTO_DCERPC,
     ALPROTO_HTTP2,
 
     /* used by the probing parser when alproto detection fails
@@ -34,28 +32,12 @@ static inline bool AppProtoEquals(AppProto sigproto, AppProto alproto)
     if (alproto == ALPROTO_HTTP2 && g_config_http1keywords_http2traffic &&
             sigproto == ALPROTO_HTTP) {
         return true;
-    } else if (sigproto == ALPROTO_DCERPC) {
-        return (alproto == ALPROTO_DCERPC || alproto == ALPROTO_SMB);
     }
     return (sigproto == alproto);
 }
 
-/**
- * \brief Maps the ALPROTO_*, to its string equivalent.
- *
- * \param alproto App layer protocol id.
- *
- * \retval String equivalent for the alproto.
- */
 const char *AppProtoToString(AppProto alproto);
 
-/**
- * \brief Maps a string to its ALPROTO_* equivalent.
- *
- * \param String equivalent for the alproto.
- *
- * \retval alproto App layer protocol id, or ALPROTO_UNKNOWN.
- */
 AppProto StringToAppProto(const char *proto_name);
 
 #endif /* __APP_LAYER_PROTOS_H__ */

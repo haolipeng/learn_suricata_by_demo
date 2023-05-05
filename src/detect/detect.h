@@ -6,6 +6,7 @@
 #define NET_THREAT_DETECT_DETECT_H
 
 typedef struct DetectEngineThreadCtx_ {
-  //TODO:field is not filled
+    //Detect Engine field
+    //TODO:field is not filled
 }DetectEngineThreadCtx;
 #endif // NET_THREAT_DETECT_DETECT_H
