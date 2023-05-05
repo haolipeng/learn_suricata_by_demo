@@ -9,10 +9,10 @@
 
 #include "base.h"
 #include "utils/conf-yaml-loader.h"
-#include "dpi/runmodes.h"
-#include "dpi/source-af-packet.h"
-#include "dpi/tm-modules.h"
-#include "dpi/tm-queuehandlers.h"
+#include "modules/runmodes.h"
+#include "modules/source-af-packet.h"
+#include "modules/tm-modules.h"
+#include "modules/tm-queuehandlers.h"
 #include "flow/flow-manager.h"
 #include "flow/flow-worker.h"
 #include "utils/conf.h"
@@ -20,7 +20,8 @@
 #include "dpi/main.h"
 #include "reassemble/stream-tcp.h"
 #include "utils/util-misc.h"
-#include "dpi/source-pcap-file.h"
+#include "modules/source-pcap-file.h"
+#include "utils/util-ioctl.h"
 
 #define DEFAULT_CONF_FILE "/etc/suricata/suricata.yaml"
 #define DEFAULT_MAX_PENDING_PACKETS 1024
@@ -35,6 +36,9 @@ int g_threads = 1; //one capture thread per nic = 1
 __thread int THREAD_ID;
 
 struct timeval g_now;
+int g_default_mtu = 0;
+
+#define DEFAULT_MTU 1500
 
 /////////////////////////////////////////////////////////////////
 volatile sig_atomic_t sigint_count = 0;
@@ -70,14 +74,7 @@ static void SCInstanceInit(SCInstance *suri, const char *progname)
 
     suri->keyword_info = NULL;
     suri->runmode_custom_mode = NULL;
-#ifndef OS_WIN32
-    suri->user_name = NULL;
-    suri->group_name = NULL;
-    suri->do_setuid = FALSE;
-    suri->do_setgid = FALSE;
-#endif /* OS_WIN32 */
-    suri->userid = 0;
-    suri->groupid = 0;
+
     suri->delayed_detect = 0;
     suri->daemon = 0;
     suri->offline = 0;
@@ -240,6 +237,76 @@ static TmEcode ParseInterfacesList(const int runmode, char *pcap_dev)
     return (TM_ECODE_OK);
 }
 
+static int ConfigGetCaptureValue(SCInstance *suri)
+{
+    /* Pull the max pending packets from the config, if not found fall
+     * back on a sane default. */
+    if (ConfGetInt("max-pending-packets", &max_pending_packets) != 1)
+        max_pending_packets = DEFAULT_MAX_PENDING_PACKETS;
+    if (max_pending_packets >= 65535) {
+        SCLogError(SC_ERR_INVALID_YAML_CONF_ENTRY,
+                   "Maximum max-pending-packets setting is 65534. "
+                   "Please check %s for errors", suri->conf_filename);
+        return TM_ECODE_FAILED;
+    }
+
+    SCLogDebug("Max pending packets set to %"PRIiMAX, max_pending_packets);
+
+    /* Pull the default packet size from the config, if not found fall
+     * back on a sane default. */
+    const char *temp_default_packet_size;
+    if ((ConfGet("default-packet-size", &temp_default_packet_size)) != 1) {
+        int mtu = 0;
+        int lthread;
+        int nlive;
+        int strip_trailing_plus = 0;
+        switch (suri->run_mode) {
+            case RUNMODE_PCAP_DEV:
+            case RUNMODE_AFP_DEV:
+                nlive = LiveGetDeviceNameCount();
+                for (lthread = 0; lthread < nlive; lthread++) {
+                    const char *live_dev = LiveGetDeviceNameName(lthread);
+                    char dev[128]; /* need to be able to support GUID names on Windows */
+                    (void)strlcpy(dev, live_dev, sizeof(dev));
+
+                    if (strip_trailing_plus) {
+                        size_t len = strlen(dev);
+                        if (len &&
+                            (dev[len-1] == '+' ||
+                             dev[len-1] == '^' ||
+                             dev[len-1] == '*'))
+                        {
+                            dev[len-1] = '\0';
+                        }
+                    }
+                    mtu = GetIfaceMTU(dev);
+                    g_default_mtu = MAX(mtu, g_default_mtu);
+
+                    unsigned int iface_max_packet_size = GetIfaceMaxPacketSize(dev);
+                    if (iface_max_packet_size > default_packet_size)
+                        default_packet_size = iface_max_packet_size;
+                }
+                if (default_packet_size)
+                    break;
+                /* fall through */
+            default:
+                g_default_mtu = DEFAULT_MTU;
+                default_packet_size = DEFAULT_PACKET_SIZE;
+        }
+    } else {
+        if (ParseSizeStringU32(temp_default_packet_size, &default_packet_size) < 0) {
+            SCLogError(SC_ERR_SIZE_PARSE, "Error parsing max-pending-packets "
+                                          "from conf file - %s.  Killing engine",
+                       temp_default_packet_size);
+            return TM_ECODE_FAILED;
+        }
+    }
+
+    SCLogDebug("Default packet size set to %"PRIu32, default_packet_size);
+
+    return TM_ECODE_OK;
+}
+
 void PreRunInit(const int runmode)
 {
     //TODO:modify by haolipeng
@@ -250,16 +317,16 @@ void PreRunInit(const int runmode)
 
 int PostConfLoadedSetup(SCInstance *suri)
 {
-    //if runmod_custom_mode is not null,set it
+    //Get custom runmode
     if (suri->runmode_custom_mode) {
         ConfSet("runmode", suri->runmode_custom_mode);
     }
 
-    //TODO:need to do
-    //if (ConfigGetCaptureValue(suri) != TM_ECODE_OK) {
-    //    return (TM_ECODE_FAILED);
-    //}
+    if (ConfigGetCaptureValue(suri) != TM_ECODE_OK) {
+        return (TM_ECODE_FAILED);
+    }
 
+    //thread modules queue handler setup
     TmqhSetup();
 
     RegisterAllModules();

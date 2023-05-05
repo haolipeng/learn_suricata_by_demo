@@ -1,9 +1,9 @@
 #ifndef NET_THREAT_DETECT_SOURCE_AF_PACKET_H
 #define NET_THREAT_DETECT_SOURCE_AF_PACKET_H
 #include "utils/queue.h"
-#include "threads.h"
+#include "utils/threads.h"
 #include "utils/util-atomic.h"
-#include "tm-threads-common.h"
+#include "modules/tm-threads-common.h"
 #include <stdint.h>
 
 #ifndef HAVE_PACKET_FANOUT /* not defined if linux/if_packet.h trying to force */

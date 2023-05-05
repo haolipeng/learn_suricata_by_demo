@@ -3,6 +3,7 @@
 #include "tmqh-packetpool.h"
 #include "utils/util-optimize.h"
 #include "tm-queuehandlers.h"
+#include "tm-modules.h"
 
 /* Number of freed packet to save for one pool before freeing them. */
 #define MAX_PENDING_RETURN_PACKETS 32
@@ -366,9 +367,8 @@ void PacketPoolPostRunmodes(void)
         FatalError(SC_ERR_INVALID_ARGUMENT, "'max-pending-packets' setting "
                 "must be at least %d", RESERVED_PACKETS);
     }
-    //TODO:modify by haolipeng ,set default 1
-    //uint32_t threads = TmThreadCountThreadsByTmmFlags(TM_FLAG_DETECT_TM);
-    uint32_t threads =1;
+
+    uint32_t threads = TmThreadCountThreadsByTmmFlags(TM_FLAG_DETECT_TM);
     if (threads == 0)
         return;
 

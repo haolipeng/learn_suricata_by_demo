@@ -16,9 +16,9 @@
 
 #include "source-af-packet.h"
 #include "decode/decode-vlan.h"
-#include "tm-modules.h"
-#include "tm-threads-common.h"
-#include "tmqh-packetpool.h"
+#include "modules/tm-modules.h"
+#include "modules/tm-threads-common.h"
+#include "modules/tmqh-packetpool.h"
 #include "utils/conf.h"
 #include "utils/util-mem.h"
 #include "utils/util-device.h"

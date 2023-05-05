@@ -2,9 +2,9 @@
 #include "source-pcap-file-helper.h"
 #include "source-pcap-file.h"
 #include "utils/util-mem.h"
-#include "tmqh-packetpool.h"
+#include "modules/tmqh-packetpool.h"
 #include "utils/conf.h"
-#include "main.h"
+#include "dpi/main.h"
 
 extern int max_pending_packets;
 extern PcapFileGlobalVars pcap_g;

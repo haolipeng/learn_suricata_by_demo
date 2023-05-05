@@ -4,7 +4,7 @@
 #include "utils/packet-queue.h"
 #include "decode/decode.h"
 #include "stream-tcp-reassemble.h"
-#include "dpi/tm-threads-common.h"
+#include "modules/tm-threads-common.h"
 #include "utils/util-exception-policy.h"
 
 #define STREAM_VERBOSE    FALSE

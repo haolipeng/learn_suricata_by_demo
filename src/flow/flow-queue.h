@@ -4,7 +4,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "dpi/threads.h"
+#include "utils/threads.h"
 #include "utils/util-atomic.h"
 
 /** Spinlocks or Mutex for the flow queues. */

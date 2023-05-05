@@ -23,7 +23,7 @@
  *
  *  Flow Hashing functions.
  */
-#include "dpi/threads.h"
+#include "utils/threads.h"
 
 #include "decode/decode.h"
 

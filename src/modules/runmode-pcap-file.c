@@ -2,8 +2,8 @@
 
 #include "runmode-pcap-file.h"
 #include "runmodes.h"
-#include "tm-threads.h"
-#include "tm-modules.h"
+#include "modules/tm-threads.h"
+#include "modules/tm-modules.h"
 #include "utils/conf.h"
 #include "source-pcap-file.h"
 #include "utils/util-time.h"

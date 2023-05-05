@@ -201,6 +201,9 @@ int DecodeTCP(Packet *, const uint8_t *, uint16_t);
     (p)->pktlen = (len); \
     } while (0)
 
+#define DEFAULT_MTU 1500
+#define DEFAULT_PACKET_SIZE (DEFAULT_MTU + ETHERNET_HEADER_LEN)
+
 /* Port is just a uint16_t */
 typedef uint16_t Port;
 #define SET_PORT(v, p) ((p) = (v))

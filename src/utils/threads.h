@@ -180,11 +180,6 @@ enum {
     unsigned long _scgetthread_tid = (unsigned long)GetCurrentThreadId(); \
 	_scgetthread_tid; \
 })
-#elif OS_WIN32
-#define SCGetThreadIdLong(...) ({ \
-    unsigned long _scgetthread_tid = (unsigned long)GetCurrentThreadId(); \
-	_scgetthread_tid; \
-})
 #elif OS_DARWIN
 #define SCGetThreadIdLong(...) ({ \
     thread_port_t tpid; \
@@ -225,9 +220,6 @@ enum {
 })
 #elif defined __OpenBSD__ /* OpenBSD */
 /** \todo Add implementation for OpenBSD */
-#define SCSetThreadName(n) (0)
-#elif defined OS_WIN32 /* Windows */
-/** \todo Add implementation for Windows */
 #define SCSetThreadName(n) (0)
 #elif defined OS_DARWIN /* Mac OS X */
 /** \todo Add implementation for MacOS */

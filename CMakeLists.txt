@@ -85,21 +85,21 @@ add_executable(net_threat_detect
         src/dpi/dpi_module.h src/common/common.h src/dpi/main.h
         src/dpi/dpi_entry.c src/dpi/dpi_entry.h
         src/utils/packet-queue.h src/utils/packet-queue.c
-        src/dpi/tmqh-packetpool.h src/dpi/tmqh-packetpool.c
+        src/modules/tmqh-packetpool.h src/modules/tmqh-packetpool.c
         src/detect/detect.h src/common/address-port.h src/utils/queue.h src/common/packet-define.h
-        src/dpi/threadvars.h  src/dpi/threads.h
+        src/modules/threadvars.h src/utils/threads.h
         src/common/autoconf.h
-        src/dpi/tm-threads.h src/dpi/tm-threads.c
-        src/dpi/tm-queues.h src/dpi/tm-queues.c
-        src/dpi/tm-queuehandlers.h src/dpi/tm-queuehandlers.c
+        src/modules/tm-threads.h src/modules/tm-threads.c
+        src/modules/tm-queues.h src/modules/tm-queues.c
+        src/modules/tm-queuehandlers.h src/modules/tm-queuehandlers.c
 
-        src/dpi/source-af-packet.h src/dpi/source-af-packet.c
-        src/dpi/tm-modules.h src/dpi/tm-modules.c
-        src/dpi/tm-threads-common.h src/dpi/runmode-af-packet.h src/dpi/runmode-af-packet.c
-        src/dpi/runmodes.c src/dpi/runmodes.h
-        src/dpi/runmode-pcap-file.h src/dpi/runmode-pcap-file.c
+        src/modules/source-af-packet.h src/modules/source-af-packet.c
+        src/modules/tm-modules.h src/modules/tm-modules.c
+        src/modules/tm-threads-common.h src/modules/runmode-af-packet.h src/modules/runmode-af-packet.c
+        src/modules/runmodes.c src/modules/runmodes.h
+        src/modules/runmode-pcap-file.h src/modules/runmode-pcap-file.c
         src/utils/conf-yaml-loader.c src/utils/conf-yaml-loader.h
-        src/decode/decode-ipv6.c src/dpi/source-pcap-file.h src/dpi/source-pcap-file.c src/dpi/source-pcap-file-helper.h src/dpi/source-pcap-file-helper.c src/dpi/source-pcap-file-directory-helper.h src/dpi/source-pcap-file-directory-helper.c)
+        src/decode/decode-ipv6.c src/modules/source-pcap-file.h src/modules/source-pcap-file.c src/modules/source-pcap-file-helper.h src/modules/source-pcap-file-helper.c src/modules/source-pcap-file-directory-helper.h src/modules/source-pcap-file-directory-helper.c)
 
 target_link_libraries(net_threat_detect
         pthread

@@ -8,7 +8,7 @@
 #include "decode/decode-ipv6.h"
 #include "decode/decode-tcp.h"
 #include "decode/decode-udp.h"
-#include "dpi/source-af-packet.h"
+#include "modules/source-af-packet.h"
 
 /** number of decoder events we support per packet. Power of 2 minus 1
  *  for memory layout */

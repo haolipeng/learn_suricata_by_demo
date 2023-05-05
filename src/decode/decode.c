@@ -1,8 +1,6 @@
 #include "decode.h"
-#include "dpi/tmqh-packetpool.h"
+#include "modules/tmqh-packetpool.h"
 
-#define DEFAULT_MTU 1500
-#define DEFAULT_PACKET_SIZE (DEFAULT_MTU + ETHERNET_HEADER_LEN)
 uint32_t default_packet_size = DEFAULT_PACKET_SIZE;
 
 inline int PacketCallocExtPkt(Packet *p, int datalen)

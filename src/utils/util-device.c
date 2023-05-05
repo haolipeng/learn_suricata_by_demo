@@ -142,6 +142,34 @@ int LiveRegisterDeviceName(const char *dev)
   return 0;
 }
 
+const char *LiveGetDeviceNameName(int number)
+{
+    int i = 0;
+    LiveDeviceName *pd;
+
+    TAILQ_FOREACH(pd, &pre_live_devices, next) {
+        if (i == number) {
+            return pd->dev;
+        }
+
+        i++;
+    }
+
+    return NULL;
+}
+
+int LiveGetDeviceNameCount(void)
+{
+    int i = 0;
+    LiveDeviceName *pd;
+
+    TAILQ_FOREACH(pd, &pre_live_devices, next) {
+        i++;
+    }
+
+    return i;
+}
+
 LiveDevice *LiveGetDevice(const char *name)
 {
     LiveDevice *pd;

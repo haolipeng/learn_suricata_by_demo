@@ -3,7 +3,7 @@
 #include <stdint.h>
 #include <stdbool.h>
 
-#include "runmodes.h"
+#include "modules/runmodes.h"
 
 /* Engine stage/status*/
 enum {
@@ -30,14 +30,6 @@ typedef struct SCInstance_ {
 
     char *keyword_info;
     char *runmode_custom_mode;
-#ifndef OS_WIN32
-    const char *user_name;
-    const char *group_name;
-    uint8_t do_setuid;
-    uint8_t do_setgid;
-#endif /* OS_WIN32 */
-    uint32_t userid;
-    uint32_t groupid;
 
     bool system;
     bool set_logdir;
@@ -56,9 +48,6 @@ typedef struct SCInstance_ {
     const char *progname; /**< pointer to argv[0] */
     const char *conf_filename;
     char *strict_rule_parsing_string;
-
-    const char *capture_plugin_name;
-    const char *capture_plugin_args;
 } SCInstance;
 
 void EngineDone(void);

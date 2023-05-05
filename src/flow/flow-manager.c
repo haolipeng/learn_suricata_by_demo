@@ -1,6 +1,6 @@
 #include "decode/decode.h"
 #include "utils/conf.h"
-#include "dpi/threadvars.h"
+#include "modules/threadvars.h"
 #include <asm-generic/errno.h>
 #include <unistd.h>
 #include <stdio.h>
@@ -18,15 +18,15 @@
 
 #include "reassemble/stream-tcp-private.h"
 
-#include "dpi/threads.h"
+#include "utils/threads.h"
 #include "utils/util-byte.h"
 #include "utils/util-debug.h"
 
 #include "app-layer/app-layer-parser.h"
-#include "dpi/tm-threads.h"
-#include "dpi/tmqh-packetpool.h"
-#include "dpi/tm-threads-common.h"
-#include "dpi/tm-modules.h"
+#include "modules/tm-threads.h"
+#include "modules/tmqh-packetpool.h"
+#include "modules/tm-threads-common.h"
+#include "modules/tm-modules.h"
 
 /** queue to pass flows to cleanup/log thread(s) */
 FlowQueue flow_recycle_q;

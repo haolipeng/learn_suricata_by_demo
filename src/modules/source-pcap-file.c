@@ -2,13 +2,13 @@
 
 #include <dirent.h>
 #include "source-pcap-file.h"
-#include "tm-threads-common.h"
+#include "modules/tm-threads-common.h"
 #include "threadvars.h"
 #include "utils/util-mem.h"
 #include "utils/conf.h"
 #include "source-pcap-file-helper.h"
 #include "source-pcap-file-directory-helper.h"
-#include "tm-modules.h"
+#include "modules/tm-modules.h"
 
 
 extern int max_pending_packets;

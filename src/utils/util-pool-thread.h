@@ -39,7 +39,7 @@
 #ifndef __UTIL_POOL_THREAD_H__
 #define __UTIL_POOL_THREAD_H__
 
-#include "dpi/threads.h"
+#include "threads.h"
 #include "util-pool.h"
 
 struct PoolThreadElement_ {

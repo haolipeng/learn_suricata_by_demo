@@ -3,7 +3,7 @@
 
 #include "decode/decode.h"
 #include "utils/util-atomic.h"
-#include "dpi/threads.h"
+#include "utils/threads.h"
 #include "utils/packet-queue.h"
 
 /* Return stack, onto which other threads free packets. */

@@ -23,7 +23,7 @@
  * Flow utility functions
  */
 
-#include "dpi/threads.h"
+#include "utils/threads.h"
 
 #include "flow-private.h"
 #include "flow-util.h"

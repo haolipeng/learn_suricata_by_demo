@@ -2,7 +2,7 @@
 #define NET_THREAT_DETECT_FLOW_H
 
 #include "base.h"
-#include "dpi/threads.h"
+#include "utils/threads.h"
 
 /* Part of the flow structure, so we declare it here.
  * The actual declaration is in app-layer-parser.c */

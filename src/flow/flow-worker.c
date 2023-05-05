@@ -5,8 +5,8 @@
 #include "flow/flow-util.h"
 #include "reassemble/stream-tcp.h"
 #include "reassemble/stream.h"
-#include "dpi/tmqh-packetpool.h"
-#include "dpi/tm-modules.h"
+#include "modules/tmqh-packetpool.h"
+#include "modules/tm-modules.h"
 #include "utils/util-time.h"
 #include <stdint.h>
 

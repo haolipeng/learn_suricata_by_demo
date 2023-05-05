@@ -1,7 +1,7 @@
 #include <netinet/in.h>
 #include "decode-ipv6.h"
 #include "base.h"
-#include "dpi/tm-threads-common.h"
+#include "modules/tm-threads-common.h"
 #include "decode.h"
 
 static int DecodeIPV6Packet (Packet *p, const uint8_t *pkt, uint16_t len)

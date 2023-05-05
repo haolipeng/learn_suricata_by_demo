@@ -35,6 +35,8 @@ int LiveRegisterDevice(const char *dev);
 int LiveBuildDeviceList(const char *base);
 int LiveBuildDeviceListCustom(const char *runmode, const char *itemname);
 int LiveRegisterDeviceName(const char *dev);
+int LiveGetDeviceNameCount(void);
+const char *LiveGetDeviceNameName(int number);
 LiveDevice *LiveGetDevice(const char *name);
 
 void LiveDeviceFinalize(void);

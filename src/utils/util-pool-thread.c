@@ -32,7 +32,7 @@
 
 #include "base.h"
 #include "common/common.h"
-#include "dpi/threads.h"
+#include "threads.h"
 #include "util-debug.h"
 #include "util-pool-thread.h"
 #include "util-pool.h"

@@ -3,8 +3,8 @@
 #include <unistd.h>
 
 #include "runmode-af-packet.h"
-#include "tm-threads.h"
-#include "tm-modules.h"
+#include "modules/tm-threads.h"
+#include "modules/tm-modules.h"
 #include "runmodes.h"
 #include "utils/conf.h"
 #include "utils/util-mem.h"

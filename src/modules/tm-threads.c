@@ -3,12 +3,12 @@
 #include <sys/time.h>
 
 #include "tm-threads.h"
-#include "dpi/tm-queuehandlers.h"
+#include "tm-queuehandlers.h"
 #include "tm-queues.h"
 #include "utils/conf.h"
 #include "tm-modules.h"
 #include "tmqh-packetpool.h"
-#include "main.h"
+#include "dpi/main.h"
 #include "utils/util-mem.h"
 
 
@@ -897,3 +897,20 @@ int TmThreadsRegisterThread(ThreadVars *tv, const int type)
     return (int)(s+1);
 }
 #undef STEP
+
+uint32_t TmThreadCountThreadsByTmmFlags(uint8_t flags)
+{
+    uint32_t cnt = 0;
+    SCMutexLock(&tv_root_lock);
+    for (int i = 0; i < TVT_MAX; i++) {
+        ThreadVars *tv = tv_root[i];
+        while (tv != NULL) {
+            if ((tv->tmm_flags & flags) == flags)
+                cnt++;
+
+            tv = tv->next;
+        }
+    }
+    SCMutexUnlock(&tv_root_lock);
+    return cnt;
+}

@@ -1,6 +1,6 @@
-#include "dpi/threads.h"
+#include "threads.h"
 #include "util-debug.h"
-#include "dpi/tm-threads.h"
+#include "modules/tm-threads.h"
 #include <stdbool.h>
 #include <sys/time.h>
 

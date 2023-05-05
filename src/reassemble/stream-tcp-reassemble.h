@@ -4,7 +4,7 @@
 #include "utils/packet-queue.h"
 #include "decode/decode.h"
 #include "stream-tcp-private.h"
-#include "dpi/threadvars.h"
+#include "modules/threadvars.h"
 
 enum
 {

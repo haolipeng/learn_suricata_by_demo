@@ -6,9 +6,9 @@
 #include <stdbool.h>
 
 #include "utils/packet-queue.h"
-#include "tm-queues.h"
+#include "modules/tm-queues.h"
 #include "utils/util-atomic.h"
-#include "tm-threads.h"
+#include "modules/tm-threads.h"
 
 #define THV_USE                 BIT_U32(0)  /** thread is in use */
 #define THV_INIT_DONE           BIT_U32(1)  /** thread initialization done */

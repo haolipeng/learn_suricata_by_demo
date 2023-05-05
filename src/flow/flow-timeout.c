@@ -14,7 +14,7 @@
 //#include "detect-engine-state.h"
 #include "app-layer/app-layer-parser.h"
 #include "reassemble/stream.h"
-#include "dpi/tmqh-packetpool.h"
+#include "modules/tmqh-packetpool.h"
 #include "utils/util-time.h"
 
 //#include "app-layer-parser.h"
