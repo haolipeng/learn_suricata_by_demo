@@ -82,62 +82,8 @@ enum {
     UDP_HLEN_INVALID,   /**< invalid len of upd header */
     UDP_LEN_INVALID,    /**< packet len in header is invalid */
 
-    /* SLL EVENTS */
-    SLL_PKT_TOO_SMALL, /**< sll packet smaller than minimum size */
-
     /* ETHERNET EVENTS */
     ETHERNET_PKT_TOO_SMALL, /**< ethernet packet smaller than minimum size */
-
-    /* PPP EVENTS */
-    PPP_PKT_TOO_SMALL,     /**< ppp packet smaller than minimum size */
-    PPPVJU_PKT_TOO_SMALL,  /**< ppp vj uncompressed packet smaller than minimum size */
-    PPPIPV4_PKT_TOO_SMALL, /**< ppp ipv4 packet smaller than minimum size */
-    PPPIPV6_PKT_TOO_SMALL, /**< ppp ipv6 packet smaller than minimum size */
-    PPP_WRONG_TYPE,        /**< wrong type in ppp frame */
-    PPP_UNSUP_PROTO,       /**< protocol not supported for ppp */
-
-    /* PPPOE EVENTS */
-    PPPOE_PKT_TOO_SMALL,  /**< pppoe packet smaller than minimum size */
-    PPPOE_WRONG_CODE,     /**< wrong code for pppoe */
-    PPPOE_MALFORMED_TAGS, /**< malformed tags in pppoe */
-
-    /* GRE EVENTS */
-    GRE_PKT_TOO_SMALL,              /**< gre packet smaller than minimum size */
-    GRE_WRONG_VERSION,              /**< wrong version in gre header */
-    GRE_VERSION0_RECUR,             /**< gre v0 recursion control */
-    GRE_VERSION0_FLAGS,             /**< gre v0 flags */
-    GRE_VERSION0_HDR_TOO_BIG,       /**< gre v0 header bigger than maximum size */
-    GRE_VERSION0_MALFORMED_SRE_HDR, /**< gre v0 malformed source route entry header */
-    GRE_VERSION1_CHKSUM,            /**< gre v1 checksum */
-    GRE_VERSION1_ROUTE,             /**< gre v1 routing */
-    GRE_VERSION1_SSR,               /**< gre v1 strict source route */
-    GRE_VERSION1_RECUR,             /**< gre v1 recursion control */
-    GRE_VERSION1_FLAGS,             /**< gre v1 flags */
-    GRE_VERSION1_NO_KEY,            /**< gre v1 no key present in header */
-    GRE_VERSION1_WRONG_PROTOCOL,    /**< gre v1 wrong protocol */
-    GRE_VERSION1_MALFORMED_SRE_HDR, /**< gre v1 malformed source route entry header */
-    GRE_VERSION1_HDR_TOO_BIG,       /**< gre v1 header too big */
-
-    /* VLAN EVENTS */
-    VLAN_HEADER_TOO_SMALL, /**< vlan header smaller than minimum size */
-    VLAN_UNKNOWN_TYPE,     /**< vlan unknown type */
-    VLAN_HEADER_TOO_MANY_LAYERS,
-
-    IEEE8021AH_HEADER_TOO_SMALL,
-
-    /* VNTAG EVENTS */
-    VNTAG_HEADER_TOO_SMALL, /**< vntag header smaller than minimum size */
-    VNTAG_UNKNOWN_TYPE,     /**< vntag unknown type */
-
-    /* RAW EVENTS */
-    IPRAW_INVALID_IPV, /**< invalid ip version in ip raw */
-
-    /* LINKTYPE NULL EVENTS */
-    LTNULL_PKT_TOO_SMALL,    /**< pkt too small for lt:null */
-    LTNULL_UNSUPPORTED_TYPE, /**< pkt has a type that the decoder doesn't support */
-
-    /* SCTP EVENTS */
-    SCTP_PKT_TOO_SMALL, /**< sctp packet smaller than minimum size */
 
     /* Fragmentation reasembly events. */
     IPV4_FRAG_PKT_TOO_LARGE,
@@ -149,39 +95,6 @@ enum {
     /* Fragment ignored due to internal error */
     IPV4_FRAG_IGNORED,
     IPV6_FRAG_IGNORED,
-
-    /* IPv4 in IPv6 events */
-    IPV4_IN_IPV6_PKT_TOO_SMALL,
-    IPV4_IN_IPV6_WRONG_IP_VER,
-
-    /* IPv6 in IPv6 events */
-    IPV6_IN_IPV6_PKT_TOO_SMALL,
-    IPV6_IN_IPV6_WRONG_IP_VER,
-
-    /* MPLS decode events. */
-    MPLS_HEADER_TOO_SMALL,
-    MPLS_PKT_TOO_SMALL,
-    MPLS_BAD_LABEL_ROUTER_ALERT,
-    MPLS_BAD_LABEL_IMPLICIT_NULL,
-    MPLS_BAD_LABEL_RESERVED,
-    MPLS_UNKNOWN_PAYLOAD_TYPE,
-
-    /* VXLAN events */
-    VXLAN_UNKNOWN_PAYLOAD_TYPE,
-
-    /* Geneve events */
-    GENEVE_UNKNOWN_PAYLOAD_TYPE,
-
-    /* ERSPAN events */
-    ERSPAN_HEADER_TOO_SMALL,
-    ERSPAN_UNSUPPORTED_VERSION,
-    ERSPAN_TOO_MANY_VLAN_LAYERS,
-
-    /* Cisco Fabric Path/DCE events. */
-    DCE_PKT_TOO_SMALL,
-
-    /* Cisco HDLC events. */
-    CHDLC_PKT_TOO_SMALL,
 
     /* generic events */
     GENERIC_TOO_MANY_LAYERS,

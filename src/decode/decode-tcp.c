@@ -50,10 +50,10 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
             switch (type) {
                 case TCP_OPT_WS:
                     if (olen != TCP_OPT_WS_LEN) {
-                        //ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
+                        ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
                         if (p->tcpvars.ws.type != 0) {
-                            //ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
+                            ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
                         } else {
                             SET_OPTS(p->tcpvars.ws, tcp_opts[tcp_opt_cnt]);
                         }
@@ -61,10 +61,10 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                     break;
                 case TCP_OPT_MSS:
                     if (olen != TCP_OPT_MSS_LEN) {
-                        //ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
+                        ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
                         if (p->tcpvars.mss.type != 0) {
-                            //ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
+                            ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
                         } else {
                             SET_OPTS(p->tcpvars.mss, tcp_opts[tcp_opt_cnt]);
                         }
@@ -72,10 +72,10 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                     break;
                 case TCP_OPT_SACKOK:
                     if (olen != TCP_OPT_SACKOK_LEN) {
-                        //ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
+                        ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
                         if (p->tcpvars.sackok.type != 0) {
-                            //ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
+                            ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
                         } else {
                             SET_OPTS(p->tcpvars.sackok, tcp_opts[tcp_opt_cnt]);
                         }
@@ -83,10 +83,10 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                     break;
                 case TCP_OPT_TS:
                     if (olen != TCP_OPT_TS_LEN) {
-                        //ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
+                        ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
                         if (p->tcpvars.ts_set) {
-                            //ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
+                            ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
                         } else {
                             uint32_t values[2];
                             memcpy(&values, tcp_opts[tcp_opt_cnt].data, sizeof(values));
@@ -103,10 +103,10 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                          olen > TCP_OPT_SACK_MAX_LEN ||
                          !((olen - 2) % 8 == 0)))
                     {
-                        //ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
+                        ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
                         if (p->tcpvars.sack.type != 0) {
-                            //ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
+                            ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
                         } else {
                             SET_OPTS(p->tcpvars.sack, tcp_opts[tcp_opt_cnt]);
                         }
@@ -116,10 +116,10 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                     SCLogDebug("TFO option, len %u", olen);
                     if ((olen != 2) && (olen < TCP_OPT_TFO_MIN_LEN || olen > TCP_OPT_TFO_MAX_LEN ||
                                         !(((olen - 2) & 0x1) == 0))) {
-                        //ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
+                        ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
                     } else {
                         if (p->tcpvars.tfo.type != 0) {
-                            //ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
+                            ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
                         } else {
                             SET_OPTS(p->tcpvars.tfo, tcp_opts[tcp_opt_cnt]);
                         }
@@ -133,14 +133,14 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
                         uint16_t magic = SCNtohs(*(uint16_t *)tcp_opts[tcp_opt_cnt].data);
                         if (magic == 0xf989) {
                             if (p->tcpvars.tfo.type != 0) {
-                                //ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
+                                ENGINE_SET_EVENT(p,TCP_OPT_DUPLICATE);
                             } else {
                                 SET_OPTS(p->tcpvars.tfo, tcp_opts[tcp_opt_cnt]);
                                 p->tcpvars.tfo.type = TCP_OPT_TFO; // treat as regular TFO
                             }
                         }
                     } else {
-                        //ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
+                        ENGINE_SET_EVENT(p,TCP_OPT_INVALID_LEN);
                     }
                     break;
                     /* RFC 2385 MD5 option */
@@ -167,6 +167,7 @@ static void DecodeTCPOptions(Packet *p, const uint8_t *pkt, uint16_t pktlen)
 
             pkt += olen;
             plen -= olen;
+            tcp_opt_cnt++;
             tcp_opt_cnt++;
         }
     }
