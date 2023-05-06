@@ -103,8 +103,6 @@ void StreamTcpSetOSPolicy(TcpStream *stream, Packet *p)
 
   if (stream->os_policy == OS_POLICY_BSD_RIGHT)
     stream->os_policy = OS_POLICY_BSD;
-  else if (stream->os_policy == OS_POLICY_OLD_SOLARIS)
-    stream->os_policy = OS_POLICY_SOLARIS;
 
   SCLogDebug("Policy is %"PRIu8"", stream->os_policy);
 }
@@ -478,8 +476,8 @@ static int StreamTcpPacketStateSynRecv(ThreadVars *tv,Packet *p,StreamTcpThread 
         if (ssn->flags & STREAMTCP_FLAG_DETECTION_EVASION_ATTEMPT) {
             if (PKT_IS_TOSERVER(p)) {
                 if ((ssn->server.os_policy == OS_POLICY_LINUX) ||
-                    (ssn->server.os_policy == OS_POLICY_OLD_LINUX) ||
-                    (ssn->server.os_policy == OS_POLICY_SOLARIS))
+                    (ssn->server.os_policy == OS_POLICY_OLD_LINUX)
+                    )
                 {
                     reset = FALSE;
                     SCLogDebug("Detection evasion has been attempted, so"
@@ -487,8 +485,8 @@ static int StreamTcpPacketStateSynRecv(ThreadVars *tv,Packet *p,StreamTcpThread 
                 }
             } else {
                 if ((ssn->client.os_policy == OS_POLICY_LINUX) ||
-                    (ssn->client.os_policy == OS_POLICY_OLD_LINUX) ||
-                    (ssn->client.os_policy == OS_POLICY_SOLARIS))
+                    (ssn->client.os_policy == OS_POLICY_OLD_LINUX)
+                    )
                 {
                     reset = FALSE;
                     SCLogDebug("Detection evasion has been attempted, so"
@@ -1368,19 +1366,12 @@ static int StreamTcpHandleTimestamp (TcpSession *ssn, Packet *p)
             }
         }
 
-        if (receiver_stream->os_policy == OS_POLICY_HPUX11) {
-            /*HPUX11 igoners the timestamp of out of order packets*/
-            if (!SEQ_EQ(sender_stream->next_seq, TCP_GET_SEQ(p)))
-                check_ts = 0;
-        }
-
         if (ts == 0) {
             switch (receiver_stream->os_policy) {
                 case OS_POLICY_OLD_LINUX:
                 case OS_POLICY_WINDOWS:
                 case OS_POLICY_WINDOWS2K3:
                 case OS_POLICY_VISTA:
-                case OS_POLICY_SOLARIS:
                     /* Old Linux and windows allowed packet with 0 timestamp. */
                     break;
                 default:
@@ -1454,8 +1445,8 @@ static int StreamTcpHandleTimestamp (TcpSession *ssn, Packet *p)
     } else {
         /* Solaris stops using timestamps if a packet is received
            without a timestamp and timestamps were used on that stream. */
-        if (receiver_stream->os_policy == OS_POLICY_SOLARIS)
-            ssn->flags &= ~STREAMTCP_FLAG_TIMESTAMP;
+        /*if (receiver_stream->os_policy == OS_POLICY_SOLARIS)
+            ssn->flags &= ~STREAMTCP_FLAG_TIMESTAMP;*/
     }
 
     return 1;
@@ -1838,19 +1829,12 @@ static int StreamTcpValidateTimestamp (TcpSession *ssn, Packet *p)
             }
         }
 
-        if (receiver_stream->os_policy == OS_POLICY_HPUX11) {
-            /* HPUX11 igoners the timestamp of out of order packets */
-            if (!SEQ_EQ(sender_stream->next_seq, TCP_GET_SEQ(p)))
-                check_ts = 0;
-        }
-
         if (ts == 0) {
             switch (receiver_stream->os_policy) {
                 case OS_POLICY_OLD_LINUX:
                 case OS_POLICY_WINDOWS:
                 case OS_POLICY_WINDOWS2K3:
                 case OS_POLICY_VISTA:
-                case OS_POLICY_SOLARIS:
                     /* Old Linux and windows allowed packet with 0 timestamp. */
                     break;
                 default:

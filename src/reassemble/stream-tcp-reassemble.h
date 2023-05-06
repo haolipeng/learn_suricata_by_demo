@@ -13,12 +13,6 @@ enum
     OS_POLICY_BSD_RIGHT,
     OS_POLICY_OLD_LINUX,
     OS_POLICY_LINUX,
-    OS_POLICY_OLD_SOLARIS,
-    OS_POLICY_SOLARIS,
-    OS_POLICY_HPUX10,
-    OS_POLICY_HPUX11,
-    OS_POLICY_IRIX,
-    OS_POLICY_MACOS,
     OS_POLICY_WINDOWS,
     OS_POLICY_VISTA,
     OS_POLICY_WINDOWS2K3,
@@ -63,12 +57,6 @@ void StreamTcpReassembleFreeThreadCtx(TcpReassemblyThreadCtx *);
 int StreamTcpReassembleAppLayer (ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,TcpSession *ssn, TcpStream *stream,
                                 Packet *p, enum StreamUpdateDir dir);
 
-void StreamTcpCreateTestPacket(uint8_t *, uint8_t, uint8_t, uint8_t);
-
-void StreamTcpSetSessionNoReassemblyFlag(TcpSession *, char);
-void StreamTcpSetSessionBypassFlag(TcpSession *);
-void StreamTcpSetDisableRawReassemblyFlag(TcpSession *, char);
-
 void StreamTcpSetOSPolicy(TcpStream *, Packet *);
 
 int StreamTcpReassembleHandleSegmentHandleData(ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,TcpSession *ssn, TcpStream *stream, Packet *p);
@@ -90,6 +78,7 @@ uint64_t StreamTcpReassembleGetMemcap(void);
 int StreamTcpReassembleCheckMemcap(uint64_t size);
 uint64_t StreamTcpReassembleMemuseGlobalCounter(void);
 
+//TODO:disable app layer
 void StreamTcpDisableAppLayer(Flow *f);
 int StreamTcpAppLayerIsDisabled(Flow *f);
 

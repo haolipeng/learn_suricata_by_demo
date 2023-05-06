@@ -224,8 +224,6 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
 
             switch (stream->os_policy) {
                 case OS_POLICY_OLD_LINUX:
-                case OS_POLICY_SOLARIS:
-                case OS_POLICY_HPUX11:
                     if (data_is_different) {
                         use_new_data = 1;
                     }
@@ -245,26 +243,14 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
             } else {
                 SCLogDebug("seg starts before and fully overlaps list");
             }
-
-            switch (stream->os_policy) {
-                case OS_POLICY_SOLARIS:
-                case OS_POLICY_HPUX11:
-                    if (data_is_different) {
-                        use_new_data = 1;
-                    }
-                    break;
-            }
         }
 
         switch (stream->os_policy) {
             case OS_POLICY_BSD:
-            case OS_POLICY_HPUX10:
-            case OS_POLICY_IRIX:
             case OS_POLICY_WINDOWS:
             case OS_POLICY_WINDOWS2K3:
             case OS_POLICY_OLD_LINUX:
             case OS_POLICY_LINUX:
-            case OS_POLICY_MACOS:
                 if (data_is_different) {
                     use_new_data = 1;
                 }
@@ -279,15 +265,6 @@ static int DoHandleDataOverlap(TcpStream *stream, const TcpSegment *list,
             SCLogDebug("seg after and is fully overlapped by list");
         } else if (SEQ_GT(SEG_SEQ_RIGHT_EDGE(seg), SEG_SEQ_RIGHT_EDGE(list))) {
             SCLogDebug("seg starts after list and ends after list");
-
-            switch (stream->os_policy) {
-                case OS_POLICY_SOLARIS:
-                case OS_POLICY_HPUX11:
-                    if (data_is_different) {
-                        use_new_data = 1;
-                    }
-                    break;
-            }
         } else {
             SCLogDebug("seg starts after list and ends before list end");
         }
