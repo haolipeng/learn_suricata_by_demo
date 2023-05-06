@@ -27,6 +27,7 @@
 #include "modules/tmqh-packetpool.h"
 #include "modules/tm-threads-common.h"
 #include "modules/tm-modules.h"
+#include "dpi/main.h"
 
 /** queue to pass flows to cleanup/log thread(s) */
 FlowQueue flow_recycle_q;
@@ -573,11 +574,10 @@ TmEcode FlowManager(ThreadVars *th_v, void *thread_data)
     const uint32_t pass_in_sec = min_timeout ? min_timeout * 8 : 60;
 
     /* don't start our activities until time is setup */
-    //TODO:suricata_ctl_flags is
-    /*while (!TimeModeIsReady()) {
+    while (!TimeModeIsReady()) {
         if (suricata_ctl_flags != 0)
             return TM_ECODE_OK;
-    }*/
+    }
     const bool time_is_live = TimeModeIsLive();
 
     SCLogDebug("FM %s/%d starting. min_timeout %us. Full hash pass in %us", th_v->name,

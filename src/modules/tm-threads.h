@@ -53,6 +53,7 @@ void TmThreadContinueThreads(void);
 void TmThreadCheckThreadState(void);
 static int TmThreadTimeoutLoop(ThreadVars *tv, TmSlot *s);
 uint32_t TmThreadCountThreadsByTmmFlags(uint8_t flags);
+bool TmThreadsTimeSubsysIsReady(void);
 
 void TmThreadsInitThreadsTimestamp(const struct timeval *ts);
 void TmThreadsSetThreadTimestamp(const int id, const struct timeval *ts);

@@ -23,6 +23,7 @@
 #include "utils/util-mem.h"
 #include "utils/util-device.h"
 #include "utils/util-ioctl.h"
+#include "dpi/main.h"
 
 #define AFP_IFACE_NAME_LENGTH 48
 
@@ -677,62 +678,71 @@ static inline int AFPWalkBlock(AFPThreadVars *ptv, struct tpacket_block_desc *pb
 
 static int AFPReadFromRingV3(AFPThreadVars *ptv)
 {
-  struct tpacket_block_desc *pbd;
-  int ret = 0;
+    struct tpacket_block_desc *pbd;
+    int ret = 0;
 
-  /* Loop till we have packets available */
-  while (1) {
-    pbd = (struct tpacket_block_desc *) ptv->ring.v3[ptv->frame_offset].iov_base;
+    /* Loop till we have packets available */
+    while (1) {
+        if (unlikely(suricata_ctl_flags != 0)) {
+            SCLogInfo("Exiting AFP V3 read loop");
+            break;
+        }
 
-    /* block is not ready to be read */
-    if ((pbd->hdr.bh1.block_status & TP_STATUS_USER) == 0) {
-      return (AFP_READ_OK);
+        pbd = (struct tpacket_block_desc *) ptv->ring.v3[ptv->frame_offset].iov_base;
+
+        /* block is not ready to be read */
+        if ((pbd->hdr.bh1.block_status & TP_STATUS_USER) == 0) {
+            return (AFP_READ_OK);
+        }
+
+        ret = AFPWalkBlock(ptv, pbd);
+        if (unlikely(ret != AFP_READ_OK)) {
+            AFPFlushBlock(pbd);
+            return(ret);
+        }
+
+        AFPFlushBlock(pbd);
+        ptv->frame_offset = (ptv->frame_offset + 1) % ptv->req.v3.tp_block_nr;
+        /* return to maintenance task after one loop on the ring */
+        if (ptv->frame_offset == 0) {
+            return (AFP_READ_OK);
+        }
     }
 
-    ret = AFPWalkBlock(ptv, pbd);
-    if (unlikely(ret != AFP_READ_OK)) {
-      AFPFlushBlock(pbd);
-      return(ret);
-    }
-
-    AFPFlushBlock(pbd);
-    ptv->frame_offset = (ptv->frame_offset + 1) % ptv->req.v3.tp_block_nr;
-    /* return to maintenance task after one loop on the ring */
-    if (ptv->frame_offset == 0) {
-      return (AFP_READ_OK);
-    }
-  }
-
-  return (AFP_READ_OK);
+    return (AFP_READ_OK);
 }
 
 static inline int AFPReadFromRingWaitForPacket(AFPThreadVars *ptv)
 {
-  union thdr h;
-  struct timeval start_time;
-  gettimeofday(&start_time, NULL);
+    union thdr h;
+    struct timeval start_time;
+    gettimeofday(&start_time, NULL);
 
-  /* busy wait loop until we have packets available */
-  while (1) {
-    h.raw = (((union thdr **)ptv->ring.v2)[ptv->frame_offset]);
-    if (unlikely(h.raw == NULL)) {
-      return AFP_READ_FAILURE;
-    }
-    const unsigned int tp_status = h.h2->tp_status;
-    if (tp_status == TP_STATUS_KERNEL) {
-      struct timeval cur_time;
-      memset(&cur_time, 0, sizeof(cur_time));
-      uint64_t milliseconds =
-          ((cur_time.tv_sec - start_time.tv_sec) * 1000) +
-          (((1000000 + cur_time.tv_usec - start_time.tv_usec) / 1000) - 1000);
-      if (milliseconds > 1000) {
+    /* busy wait loop until we have packets available */
+    while (1) {
+        if (unlikely(suricata_ctl_flags != 0)) {
+            break;
+        }
+
+        h.raw = (((union thdr **)ptv->ring.v2)[ptv->frame_offset]);
+        if (unlikely(h.raw == NULL)) {
+            return AFP_READ_FAILURE;
+        }
+        const unsigned int tp_status = h.h2->tp_status;
+        if (tp_status == TP_STATUS_KERNEL) {
+            struct timeval cur_time;
+            memset(&cur_time, 0, sizeof(cur_time));
+            uint64_t milliseconds =
+                    ((cur_time.tv_sec - start_time.tv_sec) * 1000) +
+                    (((1000000 + cur_time.tv_usec - start_time.tv_usec) / 1000) - 1000);
+            if (milliseconds > 1000) {
+                break;
+            }
+            continue;
+        }
         break;
-      }
-      continue;
     }
-    break;
-  }
-  return AFP_READ_OK;
+    return AFP_READ_OK;
 }
 
 static bool AFPReadFromRingSetupPacket(
@@ -816,6 +826,10 @@ static int AFPReadFromRing(AFPThreadVars *ptv)
 
     /* process the frames in the ring */
     while (1) {
+        if (unlikely(suricata_ctl_flags != 0)) {
+            break;
+        }
+
         h.raw = (((union thdr **)ptv->ring.v2)[ptv->frame_offset]);
         if (unlikely(h.raw == NULL)) {
             return AFP_READ_FAILURE;
@@ -971,6 +985,103 @@ static int AFPRead(AFPThreadVars *ptv)
     return AFP_READ_OK;
 }
 
+static int AFPReadAndDiscard(AFPThreadVars *ptv, struct timeval *synctv,
+                             uint64_t *discarded_pkts)
+{
+    struct sockaddr_ll from;
+    struct iovec iov;
+    struct msghdr msg;
+    struct timeval ts;
+    union {
+        struct cmsghdr cmsg;
+        char buf[CMSG_SPACE(sizeof(struct tpacket_auxdata))];
+    } cmsg_buf;
+
+
+    if (unlikely(suricata_ctl_flags != 0)) {
+        return 1;
+    }
+
+    msg.msg_name = &from;
+    msg.msg_namelen = sizeof(from);
+    msg.msg_iov = &iov;
+    msg.msg_iovlen = 1;
+    msg.msg_control = &cmsg_buf;
+    msg.msg_controllen = sizeof(cmsg_buf);
+    msg.msg_flags = 0;
+
+    iov.iov_len = ptv->datalen;
+    iov.iov_base = ptv->data;
+
+    (void)recvmsg(ptv->socket, &msg, MSG_TRUNC);
+
+    if (ioctl(ptv->socket, SIOCGSTAMP, &ts) == -1) {
+        /* FIXME */
+        return -1;
+    }
+
+    if ((ts.tv_sec > synctv->tv_sec) ||
+        (ts.tv_sec >= synctv->tv_sec &&
+         ts.tv_usec > synctv->tv_usec)) {
+        return 1;
+    }
+    return 0;
+}
+
+static int AFPReadAndDiscardFromRing(AFPThreadVars *ptv, struct timeval *synctv,
+                                     uint64_t *discarded_pkts)
+{
+    union thdr h;
+
+    if (unlikely(suricata_ctl_flags != 0)) {
+        return 1;
+    }
+
+#ifdef HAVE_TPACKET_V3
+    if (ptv->flags & AFP_TPACKET_V3) {
+        int ret = 0;
+        struct tpacket_block_desc *pbd;
+        pbd = (struct tpacket_block_desc *) ptv->ring.v3[ptv->frame_offset].iov_base;
+        *discarded_pkts += pbd->hdr.bh1.num_pkts;
+        struct tpacket3_hdr *ppd =
+                (struct tpacket3_hdr *)((uint8_t *)pbd + pbd->hdr.bh1.offset_to_first_pkt);
+        if (((time_t)ppd->tp_sec > synctv->tv_sec) ||
+            ((time_t)ppd->tp_sec == synctv->tv_sec &&
+             (suseconds_t) (ppd->tp_nsec / 1000) > (suseconds_t)synctv->tv_usec)) {
+            ret = 1;
+        }
+        AFPFlushBlock(pbd);
+        ptv->frame_offset = (ptv->frame_offset + 1) % ptv->req.v3.tp_block_nr;
+        return ret;
+
+    } else
+#endif
+    {
+        /* Read packet from ring */
+        h.raw = (((union thdr **)ptv->ring.v2)[ptv->frame_offset]);
+        if (h.raw == NULL) {
+            return -1;
+        }
+        if (h.h2->tp_status == TP_STATUS_KERNEL)
+            return 0;
+
+        if (((time_t)h.h2->tp_sec > synctv->tv_sec) ||
+            ((time_t)h.h2->tp_sec == synctv->tv_sec &&
+             (suseconds_t) (h.h2->tp_nsec / 1000) > synctv->tv_usec)) {
+            return 1;
+        }
+
+        (*discarded_pkts)++;
+        h.h2->tp_status = TP_STATUS_KERNEL;
+        if (++ptv->frame_offset >= ptv->req.v2.tp_frame_nr) {
+            ptv->frame_offset = 0;
+        }
+    }
+
+
+    return 0;
+}
+
 static int AFPSynchronizeStart(AFPThreadVars *ptv, uint64_t *discarded_pkts)
 {
   struct timeval synctv;
@@ -995,9 +1106,9 @@ static int AFPSynchronizeStart(AFPThreadVars *ptv, uint64_t *discarded_pkts)
         gettimeofday(&synctv, NULL);
       }
       if (ptv->flags & AFP_RING_MODE) {
-        //r = AFPReadAndDiscardFromRing(ptv, &synctv, discarded_pkts);
+        r = AFPReadAndDiscardFromRing(ptv, &synctv, discarded_pkts);
       } else {
-        //r = AFPReadAndDiscard(ptv, &synctv, discarded_pkts);
+        r = AFPReadAndDiscard(ptv, &synctv, discarded_pkts);
       }
       SCLogDebug("Discarding on %s", ptv->tv->name);
       switch (r) {
@@ -1068,6 +1179,9 @@ TmEcode ReceiveAFPLoop(ThreadVars *tv, void *data, void *slot)
         /* Wait for our turn, threads before us must have opened the socket */
         while (AFPPeersListWaitTurn(ptv->mpeer)) {
             usleep(1000);
+            if (suricata_ctl_flags != 0) {
+                break;
+            }
         }
         r = AFPCreateSocket(ptv, ptv->iface, 1);
         if (r < 0) {
@@ -1098,6 +1212,11 @@ TmEcode ReceiveAFPLoop(ThreadVars *tv, void *data, void *slot)
 
             do {
                 usleep(AFP_RECONNECT_TIMEOUT);
+                if (suricata_ctl_flags != 0) {
+                    dbreak = 1;
+                    break;
+                }
+
                 r = AFPTryReopen(ptv);
                 fds.fd = ptv->socket;
             } while (r < 0);
@@ -1110,6 +1229,10 @@ TmEcode ReceiveAFPLoop(ThreadVars *tv, void *data, void *slot)
         PacketPoolWait();
 
         r = poll(&fds, 1, POLL_TIMEOUT);
+
+        if (suricata_ctl_flags != 0) {
+            break;
+        }
 
         if (r > 0 &&
             (fds.revents & (POLLHUP|POLLRDHUP|POLLERR|POLLNVAL))) {

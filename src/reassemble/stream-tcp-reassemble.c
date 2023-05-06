@@ -530,69 +530,69 @@ uint32_t StreamDataAvailableForProtoDetect(TcpStream *stream)
 int StreamTcpReassembleHandleSegmentHandleData(ThreadVars *tv, TcpReassemblyThreadCtx *ra_ctx,
                                                TcpSession *ssn, TcpStream *stream, Packet *p)
 {
-  if (ssn->data_first_seen_dir == 0) {
-    if (PKT_IS_TOSERVER(p)) {
-      ssn->data_first_seen_dir = STREAM_TOSERVER;
-    } else {
-      ssn->data_first_seen_dir = STREAM_TOCLIENT;
+    if (ssn->data_first_seen_dir == 0) {
+        if (PKT_IS_TOSERVER(p)) {
+            ssn->data_first_seen_dir = STREAM_TOSERVER;
+        } else {
+            ssn->data_first_seen_dir = STREAM_TOCLIENT;
+        }
     }
-  }
 
-  /* If the OS policy is not set then set the OS policy for this stream */
-  if (stream->os_policy == 0) {
-    StreamTcpSetOSPolicy(stream, p);
-  }
+    /* If the OS policy is not set then set the OS policy for this stream */
+    if (stream->os_policy == 0) {
+        StreamTcpSetOSPolicy(stream, p);
+    }
 
-  if ((ssn->flags & STREAMTCP_FLAG_APP_LAYER_DISABLED) &&
-      (stream->flags & STREAMTCP_STREAM_FLAG_NEW_RAW_DISABLED)) {
-    SCLogDebug("ssn %p: both app and raw reassembly disabled, not reassembling", ssn);
+    if ((ssn->flags & STREAMTCP_FLAG_APP_LAYER_DISABLED) &&
+        (stream->flags & STREAMTCP_STREAM_FLAG_NEW_RAW_DISABLED)) {
+        SCLogDebug("ssn %p: both app and raw reassembly disabled, not reassembling", ssn);
+        return (0);
+    }
+
+    /* If we have reached the defined depth for either of the stream, then stop
+       reassembling the TCP session */
+    uint32_t size = StreamTcpReassembleCheckDepth(ssn, stream, TCP_GET_SEQ(p), p->payload_len);
+    SCLogDebug("ssn %p: check depth returned %"PRIu32, ssn, size);
+
+    if (stream->flags & STREAMTCP_STREAM_FLAG_DEPTH_REACHED) {
+        /* increment stream depth counter */
+        //StatsIncr(tv, ra_ctx->counter_tcp_stream_depth);
+    }
+    if (size == 0) {
+        SCLogDebug("ssn %p: depth reached, not reassembling", ssn);
+        return (0);
+    }
+
+    DEBUG_VALIDATE_BUG_ON(size > p->payload_len);
+    if (size > p->payload_len)
+        size = p->payload_len;
+
+    TcpSegment *seg = StreamTcpGetSegment(tv, ra_ctx);
+    if (seg == NULL) {
+        SCLogDebug("segment_pool is empty");
+        StreamTcpSetEvent(p, STREAM_REASSEMBLY_NO_SEGMENT);
+        return (-1);
+    }
+
+    TCP_SEG_LEN(seg) = size;
+    seg->seq = TCP_GET_SEQ(p);
+
+    /* HACK: for TFO SYN packets the seq for data starts at + 1 */
+    if (TCP_HAS_TFO(p) && p->payload_len && p->tcph->th_flags == TH_SYN)
+        seg->seq += 1;
+
+    /* proto detection skipped, but now we do get data. Set event. */
+    if (RB_EMPTY(&stream->seg_tree) &&
+        stream->flags & STREAMTCP_STREAM_FLAG_APPPROTO_DETECTION_SKIPPED) {
+        //TODO:App Layer modify by haolipeng
+        //AppLayerDecoderEventsSetEventRaw(&p->app_layer_events,APPLAYER_PROTO_DETECTION_SKIPPED);
+    }
+
+    if (StreamTcpReassembleInsertSegment(tv, ra_ctx, stream, seg, p, TCP_GET_SEQ(p), p->payload, p->payload_len) != 0) {
+        SCLogDebug("StreamTcpReassembleInsertSegment failed");
+        return (-1);
+    }
     return (0);
-  }
-
-  /* If we have reached the defined depth for either of the stream, then stop
-     reassembling the TCP session */
-  uint32_t size = StreamTcpReassembleCheckDepth(ssn, stream, TCP_GET_SEQ(p), p->payload_len);
-  SCLogDebug("ssn %p: check depth returned %"PRIu32, ssn, size);
-
-  if (stream->flags & STREAMTCP_STREAM_FLAG_DEPTH_REACHED) {
-    /* increment stream depth counter */
-    //StatsIncr(tv, ra_ctx->counter_tcp_stream_depth);
-  }
-  if (size == 0) {
-    SCLogDebug("ssn %p: depth reached, not reassembling", ssn);
-    return (0);
-  }
-
-  DEBUG_VALIDATE_BUG_ON(size > p->payload_len);
-  if (size > p->payload_len)
-    size = p->payload_len;
-
-  TcpSegment *seg = StreamTcpGetSegment(tv, ra_ctx);
-  if (seg == NULL) {
-    SCLogDebug("segment_pool is empty");
-    //StreamTcpSetEvent(p, STREAM_REASSEMBLY_NO_SEGMENT);
-    return (-1);
-  }
-
-  TCP_SEG_LEN(seg) = size;
-  seg->seq = TCP_GET_SEQ(p);
-
-  /* HACK: for TFO SYN packets the seq for data starts at + 1 */
-  if (TCP_HAS_TFO(p) && p->payload_len && p->tcph->th_flags == TH_SYN)
-    seg->seq += 1;
-
-  /* proto detection skipped, but now we do get data. Set event. */
-  if (RB_EMPTY(&stream->seg_tree) &&
-      stream->flags & STREAMTCP_STREAM_FLAG_APPPROTO_DETECTION_SKIPPED) {
-    //TODO:App Layer modify by haolipeng
-    //AppLayerDecoderEventsSetEventRaw(&p->app_layer_events,APPLAYER_PROTO_DETECTION_SKIPPED);
-  }
-
-  if (StreamTcpReassembleInsertSegment(tv, ra_ctx, stream, seg, p, TCP_GET_SEQ(p), p->payload, p->payload_len) != 0) {
-    SCLogDebug("StreamTcpReassembleInsertSegment failed");
-    return (-1);
-  }
-  return (0);
 }
 
 static uint8_t StreamGetAppLayerFlags(TcpSession *ssn, TcpStream *stream,

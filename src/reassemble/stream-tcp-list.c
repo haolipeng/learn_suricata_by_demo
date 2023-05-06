@@ -447,7 +447,7 @@ static int DoHandleData(TcpStream *stream, TcpSegment *seg, TcpSegment *tree_seg
 
     /* we had an overlap with different data */
     if (result) {
-        //StreamTcpSetEvent(p, STREAM_REASSEMBLY_OVERLAP_DIFFERENT_DATA);
+        StreamTcpSetEvent(p, STREAM_REASSEMBLY_OVERLAP_DIFFERENT_DATA);
         //StatsIncr(tv, ra_ctx->counter_tcp_reass_overlap_diff_data);
     }
 

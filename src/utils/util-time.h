@@ -57,6 +57,7 @@ void TimeSetIncrementTime(uint32_t);
 
 bool TimeModeIsReady(void);
 void TimeModeSetLive(void);
+bool TimeModeIsReady(void);
 bool TimeModeIsLive(void);
 
 struct tm *SCLocalTime(time_t timep, struct tm *result);

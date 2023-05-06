@@ -238,7 +238,7 @@ static void *TmThreadsSlotPktAcqLoop(void *td)
             TmThreadsSetFlag(tv, THV_FAILED);
             run = 0;
         }
-        if (TmThreadsCheckFlag(tv, THV_KILL_PKTACQ)) {
+        if (TmThreadsCheckFlag(tv, THV_KILL_PKTACQ) || suricata_ctl_flags) {
             run = 0;
         }
         if (r == TM_ECODE_DONE) {
@@ -913,4 +913,21 @@ uint32_t TmThreadCountThreadsByTmmFlags(uint8_t flags)
     }
     SCMutexUnlock(&tv_root_lock);
     return cnt;
+}
+
+bool TmThreadsTimeSubsysIsReady(void)
+{
+    bool ready = true;
+    SCMutexLock(&thread_store_lock);
+    for (size_t s = 0; s < thread_store.threads_size; s++) {
+        Thread *t = &thread_store.threads[s];
+        if (!t->in_use)
+            break;
+        if (t->sys_sec_stamp == 0) {
+            ready = false;
+            break;
+        }
+    }
+    SCMutexUnlock(&thread_store_lock);
+    return ready;
 }

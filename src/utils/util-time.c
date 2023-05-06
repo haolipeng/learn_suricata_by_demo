@@ -27,6 +27,13 @@ void TimeModeSetLive(void)
     SCLogDebug("live time mode enabled");
 }
 
+bool TimeModeIsReady(void)
+{
+    if (live_time_tracking)
+        return true;
+    return TmThreadsTimeSubsysIsReady();
+}
+
 bool TimeModeIsLive(void)
 {
     return live_time_tracking;
