@@ -267,7 +267,7 @@ TmEcode StreamTcp (ThreadVars *,Packet *, void *, PacketQueueNoLock *pq);
 static void FlowPruneFiles(Packet *p)
 {
     if (p->flow && p->flow->alstate) {
-        //TODO:modify by haolipeng
+        //TODO:modify by haolipeng app layer parser
         /*Flow *f = p->flow;
         FileContainer *fc = AppLayerParserGetFiles(f,
                                                    PKT_IS_TOSERVER(p) ? STREAM_TOSERVER : STREAM_TOCLIENT);
@@ -300,7 +300,7 @@ static inline void FlowWorkerStreamTCPUpdate(ThreadVars *tv,FlowWorkerThreadData
             //Detect(tv, x, detect_thread);
         }
 
-        //TODO:modify by haolipeng
+        //TODO:modify by haolipeng output log
         //OutputLoggerLog(tv, x, fw->output_thread);
 
         if (timeout) {
@@ -343,7 +343,7 @@ static void FlowWorkerFlowTimeout(ThreadVars *tv, Packet *p, FlowWorkerThreadDat
     StreamTcpPruneSession(p->flow, p->flowflags & FLOW_PKT_TOSERVER ? STREAM_TOSERVER : STREAM_TOCLIENT);
 
     /* run tx cleanup last */
-    //TODO:modify by haolipeng
+    //TODO:modify by haolipeng app layer parser
     //AppLayerParserTransactionsCleanup(p->flow);
 
     FlowDeReference(&p->flow);
@@ -441,7 +441,7 @@ TmEcode FlowWorker(ThreadVars *tv, Packet *p, void *data)
 
     /* handle Detect */
     SCLogDebug("packet %"PRIu64" calling Detect", p->pcap_cnt);
-    //TODO:Detect modify by haolipeng
+    //TODO:modify by haolipeng,Detect
     if (detect_thread != NULL) {
         //Detect(tv, p, detect_thread);
     }
@@ -449,6 +449,7 @@ TmEcode FlowWorker(ThreadVars *tv, Packet *p, void *data)
     // Outputs.
     //OutputLoggerLog(tv, p, fw->output_thread);
 
+    //TODO: modify by haolipeng ,flow prune files
     /* Prune any stored files. */
     //FlowPruneFiles(p);
 

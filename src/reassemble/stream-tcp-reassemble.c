@@ -1000,7 +1000,7 @@ static inline uint32_t AdjustToAcked(const Packet *p,
  *  \param stream pointer to pointer as app-layer can switch flow dir
  *  \retval 0 success
  */
- //TODO:modify by haolipeng
+ //TODO:modify by haolipeng app layer
 #if 0
 static int ReassembleUpdateAppLayer (ThreadVars *tv,
                                     TcpReassemblyThreadCtx *ra_ctx,

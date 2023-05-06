@@ -267,7 +267,7 @@ int FlowForceReassemblyNeedReassembly(Flow *f)
 
     /* if app layer still needs some love, push through */
     if (f->alproto != ALPROTO_UNKNOWN && f->alstate != NULL) {
-        //TODO:modify by haolipeng
+        //TODO:modify by haolipeng, it related to app layer parser
         /*const uint64_t total_txs = AppLayerParserGetTxCnt(f, f->alstate);
 
         if (AppLayerParserGetTransactionActive(f, f->alparser, STREAM_TOCLIENT) < total_txs)

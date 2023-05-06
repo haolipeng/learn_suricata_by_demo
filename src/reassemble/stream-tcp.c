@@ -1331,8 +1331,7 @@ static int StreamTcpHandleTimestamp (TcpSession *ssn, Packet *p)
     /* Set up the os_policy to be used in validating the timestamps based on
        the target system */
     if (receiver_stream->os_policy == 0) {
-        //TODO:modify by haolipeng,setting os policy not finished!
-        //StreamTcpSetOSPolicy(receiver_stream, p);
+        StreamTcpSetOSPolicy(receiver_stream, p);
     }
 
     if (TCP_HAS_TS(p)) {
@@ -1797,7 +1796,7 @@ static int StreamTcpValidateTimestamp (TcpSession *ssn, Packet *p)
     /* Set up the os_policy to be used in validating the timestamps based on
        the target system */
     if (receiver_stream->os_policy == 0) {
-        //StreamTcpSetOSPolicy(receiver_stream, p);
+        StreamTcpSetOSPolicy(receiver_stream, p);
     }
 
     if (TCP_HAS_TS(p)) {
