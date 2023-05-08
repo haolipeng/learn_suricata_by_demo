@@ -29,7 +29,7 @@
 #define DATA_DIR "/var/lib/suricata/data"
 
 /* Enable debug output */
-//#define DEBUG 1
+#define DEBUG 1
 
 /* Enable (debug) validation code output */
 /* #undef DEBUG_VALIDATION */

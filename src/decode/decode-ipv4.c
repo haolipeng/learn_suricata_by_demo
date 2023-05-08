@@ -2,6 +2,7 @@
 #include "decode.h"
 #include "dpi/dpi_module.h"
 #include "utils/packet-queue.h"
+#include "utils/util-print.h"
 
 static int IPV4OptValidateGeneric(Packet *p, const IPV4Opt *o)
 {
@@ -457,6 +458,16 @@ int DecodeIPV4(Packet *p,const uint8_t *pkt, uint16_t len)
         p->flags |= PKT_IS_FRAGMENT;
         return TM_ECODE_OK;
     }*/
+
+#ifdef DEBUG
+    /* debug print */
+    char s[16], d[16];
+    PrintInet(AF_INET, (const void *)GET_IPV4_SRC_ADDR_PTR(p), s, sizeof(s));
+    PrintInet(AF_INET, (const void *)GET_IPV4_DST_ADDR_PTR(p), d, sizeof(d));
+    SCLogDebug("IPV4 %s->%s PROTO: %" PRIu32 " OFFSET: %" PRIu32 " RF: %" PRIu32 " DF: %" PRIu32 " MF: %" PRIu32 " ID: %" PRIu32 "", s,d,
+            IPV4_GET_IPPROTO(p), IPV4_GET_IPOFFSET(p), IPV4_GET_RF(p),
+            IPV4_GET_DF(p), IPV4_GET_MF(p), IPV4_GET_IPID(p));
+#endif /* DEBUG */
 
     switch (IPV4_GET_IPPROTO(p)) {
         case IPPROTO_TCP:

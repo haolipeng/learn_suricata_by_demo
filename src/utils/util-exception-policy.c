@@ -3,6 +3,87 @@
 #include "conf.h"
 #include "util-debug.h"
 
+#ifndef DEBUG
+
+int ExceptionSimulationCommandlineParser(const char *name, const char *arg)
+{
+    return 0;
+}
+
+#else
+/* exception policy simulation (eps) handling */
+
+uint64_t g_eps_applayer_error_offset_ts = UINT64_MAX;
+uint64_t g_eps_applayer_error_offset_tc = UINT64_MAX;
+uint64_t g_eps_pcap_packet_loss = UINT64_MAX;
+uint64_t g_eps_stream_ssn_memcap = UINT64_MAX;
+uint64_t g_eps_stream_reassembly_memcap = UINT64_MAX;
+uint64_t g_eps_flow_memcap = UINT64_MAX;
+uint64_t g_eps_defrag_memcap = UINT64_MAX;
+bool g_eps_is_alert_queue_fail_mode = false;
+
+/* 1: parsed, 0: not for us, -1: error */
+int ExceptionSimulationCommandlineParser(const char *name, const char *arg)
+{
+    if (strcmp(name, "simulate-applayer-error-at-offset-ts") == 0) {
+        BUG_ON(arg == NULL);
+        uint64_t offset = 0;
+        if (ParseSizeStringU64(arg, &offset) < 0) {
+            return -1;
+        }
+        g_eps_applayer_error_offset_ts = offset;
+    } else if (strcmp(name, "simulate-applayer-error-at-offset-tc") == 0) {
+        BUG_ON(arg == NULL);
+        uint64_t offset = 0;
+        if (ParseSizeStringU64(arg, &offset) < 0) {
+            return TM_ECODE_FAILED;
+        }
+        g_eps_applayer_error_offset_tc = offset;
+    } else if (strcmp(name, "simulate-packet-loss") == 0) {
+        BUG_ON(arg == NULL);
+        uint64_t pkt_num = 0;
+        if (ParseSizeStringU64(arg, &pkt_num) < 0) {
+            return TM_ECODE_FAILED;
+        }
+        g_eps_pcap_packet_loss = pkt_num;
+    } else if (strcmp(name, "simulate-packet-tcp-reassembly-memcap") == 0) {
+        BUG_ON(arg == NULL);
+        uint64_t pkt_num = 0;
+        if (ParseSizeStringU64(arg, &pkt_num) < 0) {
+            return TM_ECODE_FAILED;
+        }
+        g_eps_stream_reassembly_memcap = pkt_num;
+    } else if (strcmp(name, "simulate-packet-tcp-ssn-memcap") == 0) {
+        BUG_ON(arg == NULL);
+        uint64_t pkt_num = 0;
+        if (ParseSizeStringU64(arg, &pkt_num) < 0) {
+            return TM_ECODE_FAILED;
+        }
+        g_eps_stream_ssn_memcap = pkt_num;
+    } else if (strcmp(name, "simulate-packet-flow-memcap") == 0) {
+        BUG_ON(arg == NULL);
+        uint64_t pkt_num = 0;
+        if (ParseSizeStringU64(arg, &pkt_num) < 0) {
+            return TM_ECODE_FAILED;
+        }
+        g_eps_flow_memcap = pkt_num;
+    } else if (strcmp(name, "simulate-packet-defrag-memcap") == 0) {
+        BUG_ON(arg == NULL);
+        uint64_t pkt_num = 0;
+        if (ParseSizeStringU64(arg, &pkt_num) < 0) {
+            return TM_ECODE_FAILED;
+        }
+        g_eps_defrag_memcap = pkt_num;
+    } else if (strcmp(name, "simulate-alert-queue-realloc-failure") == 0) {
+        g_eps_is_alert_queue_fail_mode = true;
+    } else {
+        // not for us
+        return 0;
+    }
+    return 1;
+}
+#endif
+
 enum ExceptionPolicy ExceptionPolicyParse(const char *option, const bool support_flow)
 {
     enum ExceptionPolicy policy = EXCEPTION_POLICY_IGNORE;
@@ -49,9 +130,4 @@ enum ExceptionPolicy ExceptionPolicyParse(const char *option, const bool support
         SCLogConfig("%s: ignore", option);
     }
     return policy;
-}
-
-int ExceptionSimulationCommandlineParser(const char *name, const char *arg)
-{
-    return 0;
 }

@@ -52,9 +52,6 @@ typedef struct IPV6Hdr_
 #define IPV6_GET_RAW_PLEN(ip6h)         (SCNtohs((ip6h)->s_ip6_plen))
 #define IPV6_GET_RAW_HLIM(ip6h)         ((ip6h)->s_ip6_hlim)
 
-#define IPV6_SET_RAW_VER(ip6h, value)   ((ip6h)->s_ip6_vfc = (((ip6h)->s_ip6_vfc & 0x0f) | (value << 4)))
-#define IPV6_SET_RAW_NH(ip6h, value)    ((ip6h)->s_ip6_nxt = (value))
-
 #define IPV6_SET_L4PROTO(p,proto)       (p)->ip6vars.l4proto = (proto)
 #define IPV6_SET_EXTHDRS_LEN(p,len)     (p)->ip6vars.exthdrs_len = (len)
 
@@ -80,10 +77,6 @@ typedef struct IPV6Hdr_
     ((p)->ip6vars.l4proto)
 #define IPV6_GET_EXTHDRS_LEN(p) \
     ((p)->ip6vars.exthdrs_len)
-
-/** \brief get the highest proto/next header field we know */
-//#define IPV6_GET_UPPER_PROTO(p)         (p)->ip6eh.ip6_exthdrs_cnt ?
-//    (p)->ip6eh.ip6_exthdrs[(p)->ip6eh.ip6_exthdrs_cnt - 1].next : IPV6_GET_NH((p))
 
 /* helper structure with parsed ipv6 info */
 typedef struct IPV6Vars_

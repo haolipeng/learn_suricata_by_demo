@@ -192,6 +192,12 @@ int DecodeTCP(Packet *, const uint8_t *, uint16_t);
         SET_PORT(UDP_GET_DST_PORT((pkt)), *(prt)); \
     } while (0)
 
+#define GET_IPV4_SRC_ADDR_PTR(p) ((p)->src.addr_data32)
+#define GET_IPV4_DST_ADDR_PTR(p) ((p)->dst.addr_data32)
+
+#define GET_IPV6_SRC_ADDR(p) ((p)->src.addr_data32)
+#define GET_IPV6_DST_ADDR(p) ((p)->dst.addr_data32)
+
 #define GET_PKT_LEN(p) ((p)->pktlen)
 #define GET_PKT_DATA(p) ((((p)->ext_pkt) == NULL ) ? (uint8_t *)((p) + 1) : (p)->ext_pkt)
 #define GET_PKT_DIRECT_DATA(p) (uint8_t *)((p) + 1)

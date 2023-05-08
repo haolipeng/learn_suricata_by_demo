@@ -273,11 +273,11 @@ TmEcode PcapDirectoryPopulateBuffer(PcapFileDirectoryVars *pv,
             memset(&temp_time, 0, sizeof(struct timespec));
 
             if (PcapDirectoryGetModifiedTime(pathbuff, &temp_time) == 0) {
-                SCLogDebug("%" PRIuMAX " < %" PRIuMAX "(%s) < %" PRIuMAX ")",
+                /*SCLogDebug("%" PRIuMAX " < %" PRIuMAX "(%s) < %" PRIuMAX ")",
                            (uintmax_t)SCTimespecAsEpochMillis(&pv->shared->last_processed),
                            (uintmax_t)SCTimespecAsEpochMillis(&temp_time),
                            pathbuff,
-                           (uintmax_t)SCTimespecAsEpochMillis(older_than));
+                           (uintmax_t)SCTimespecAsEpochMillis(older_than));*/
 
                 // Skip files outside of our time range
                 if (CompareTimes(&temp_time, &pv->shared->last_processed) <= 0) {

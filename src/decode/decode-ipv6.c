@@ -3,6 +3,7 @@
 #include "base.h"
 #include "modules/tm-threads-common.h"
 #include "decode.h"
+#include "utils/util-print.h"
 
 static int DecodeIPV6Packet (Packet *p, const uint8_t *pkt, uint16_t len)
 {
@@ -38,6 +39,17 @@ int DecodeIPV6(Packet *p, const uint8_t *pkt, uint16_t len)
         CLEAR_IPV6_PACKET(p);
         return TM_ECODE_FAILED;
     }
+
+#ifdef DEBUG
+    /* only convert the addresses if debug is really enabled */
+    /* debug print */
+    char s[46], d[46];
+    PrintInet(AF_INET6, (const void *)GET_IPV6_SRC_ADDR(p), s, sizeof(s));
+    PrintInet(AF_INET6, (const void *)GET_IPV6_DST_ADDR(p), d, sizeof(d));
+    SCLogDebug("IPV6 %s->%s - CLASS: %" PRIu32 " FLOW: %" PRIu32 " NH: %" PRIu32 " PLEN: %" PRIu32 " HLIM: %" PRIu32 "", s,d,
+               IPV6_GET_CLASS(p), IPV6_GET_FLOW(p), IPV6_GET_NH(p), IPV6_GET_PLEN(p),
+               IPV6_GET_HLIM(p));
+#endif /* DEBUG */
 
     /* now process the Ext headers and/or the L4 Layer */
     switch(IPV6_GET_NH(p)) {

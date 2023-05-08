@@ -228,6 +228,7 @@ enum {
 /**
  * \brief Set the threads name
  */
+#include <errno.h>
 #define SCSetThreadName(n) ({ \
     char tname[THREAD_NAME_LEN + 1] = ""; \
     if (strlen(n) > THREAD_NAME_LEN) \

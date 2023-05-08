@@ -170,6 +170,12 @@ int StreamTcpCheckMemcap(uint64_t size)
     return 0;
 }
 
+uint64_t StreamTcpMemuseCounter(void)
+{
+    uint64_t memusecopy = SC_ATOMIC_GET(st_memuse);
+    return memusecopy;
+}
+
 static int RandomGetWrap(void)
 {
     unsigned long r;
