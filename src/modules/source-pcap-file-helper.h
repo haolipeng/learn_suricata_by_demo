@@ -59,7 +59,7 @@ typedef struct PcapFileFileVars_
     struct timeval first_pkt_ts;
 } PcapFileFileVars;
 
-typedef int (*DecoderFunc)(Packet *p,const uint8_t *pkt, uint32_t len);
+typedef int (*DecoderFunc)(ThreadVars *tv, Packet *p,const uint8_t *pkt, uint32_t len);
 /**
  * Dispatch a file for processing, where the information necessary to process that
  * file is as PcapFileFileVars object.

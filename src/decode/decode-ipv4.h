@@ -1,7 +1,3 @@
-//
-// Created by haolipeng on 3/28/23.
-//
-
 #ifndef NET_THREAT_DETECT_DECODE_IPV4_H
 #define NET_THREAT_DETECT_DECODE_IPV4_H
 

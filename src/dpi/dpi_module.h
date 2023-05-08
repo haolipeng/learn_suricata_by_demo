@@ -12,6 +12,4 @@ typedef struct dpi_thread_data_ {
 
 extern dpi_thread_data_t g_dpi_thread_data[];
 
-#define per_core_counter          (g_dpi_thread_data[THREAD_ID].counter)
-
 #endif //NET_THREAT_DETECT_DPI_MODULE_H

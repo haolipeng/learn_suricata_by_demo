@@ -3,6 +3,7 @@
 #include "dpi/dpi_module.h"
 #include "utils/packet-queue.h"
 #include "utils/util-print.h"
+#include "modules/threadvars.h"
 
 static int IPV4OptValidateGeneric(Packet *p, const IPV4Opt *o)
 {
@@ -437,9 +438,9 @@ static int DecodeIPV4Packet(Packet *p, const uint8_t *pkt, uint16_t len)
     return 0;
 }
 
-int DecodeIPV4(Packet *p,const uint8_t *pkt, uint16_t len)
+int DecodeIPV4(ThreadVars* tv,Packet *p,const uint8_t *pkt, uint16_t len)
 {
-    per_core_counter.ipv4_pkts++;
+    tv->counter_ipv4++;
 
     //ipv4数据包解析
     if (unlikely(DecodeIPV4Packet (p, pkt, len) < 0)) {
@@ -471,22 +472,22 @@ int DecodeIPV4(Packet *p,const uint8_t *pkt, uint16_t len)
 
     switch (IPV4_GET_IPPROTO(p)) {
         case IPPROTO_TCP:
-            per_core_counter.tcp_pkts++;//统计tcp数据包个数
-            DecodeTCP(p, pkt + IPV4_GET_HLEN(p),
+            tv->counter_tcp++;//统计tcp数据包个数
+            DecodeTCP(tv,p, pkt + IPV4_GET_HLEN(p),
                       IPV4_GET_IPLEN(p) - IPV4_GET_HLEN(p));
             break;
         case IPPROTO_UDP:
-            per_core_counter.udp_pkts++;//统计udp数据包个数
-            DecodeUDP(p, pkt + IPV4_GET_HLEN(p),
+            tv->counter_udp++;//统计udp数据包个数
+            DecodeUDP(tv,p, pkt + IPV4_GET_HLEN(p),
                       IPV4_GET_IPLEN(p) - IPV4_GET_HLEN(p));
             break;
         case IPPROTO_ICMP:
-            per_core_counter.icmp_pkts++;//统计icmp数据包个数
+            tv->counter_icmpv4++;//统计icmp数据包个数
             //TODO:comment by haolipeng
             //DecodeICMPV4(p, pkt + IPV4_GET_HLEN(p),IPV4_GET_IPLEN(p) - IPV4_GET_HLEN(p));
             break;
         default:
-            per_core_counter.other_pkts++;//统计other数据包个数
+            tv->counter_others++;//统计other数据包个数
             break;
     }
 

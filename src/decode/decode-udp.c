@@ -35,7 +35,7 @@ static int DecodeUDPPacket(Packet *p, const uint8_t *pkt, uint16_t len)
     return 0;
 }
 
-int DecodeUDP(Packet *p,const uint8_t *pkt, uint16_t len)
+int DecodeUDP(ThreadVars* tv, Packet *p,const uint8_t *pkt, uint16_t len)
 {
     if (unlikely(DecodeUDPPacket(p, pkt,len) < 0)) {
         CLEAR_UDP_PACKET(p);

@@ -1816,7 +1816,7 @@ TmEcode DecodeAFP(ThreadVars *tv, Packet *p, void *data)
 
     /* call the decoder */
     if(LINKTYPE_ETHERNET == p->datalink){
-        DecodeEthernet(p, GET_PKT_DATA(p), GET_PKT_LEN(p));
+        DecodeEthernet(tv,p, GET_PKT_DATA(p), GET_PKT_LEN(p));
     }
 
     return TM_ECODE_OK;

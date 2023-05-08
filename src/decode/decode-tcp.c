@@ -209,7 +209,7 @@ static int DecodeTCPPacket(Packet *p, const uint8_t *pkt, uint16_t len)
     return 0;
 }
 
-int DecodeTCP(Packet *p,const uint8_t *pkt, uint16_t len)
+int DecodeTCP(ThreadVars* tv, Packet *p,const uint8_t *pkt, uint16_t len)
 {
     if (unlikely(DecodeTCPPacket(p, pkt,len) < 0)) {
         SCLogDebug("invalid TCP packet");

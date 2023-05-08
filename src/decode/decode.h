@@ -26,7 +26,6 @@ enum PktSrcEnum {
     PKT_SRC_DECODER_GRE,
     PKT_SRC_DECODER_IPV4,
     PKT_SRC_DECODER_IPV6,
-    PKT_SRC_DECODER_TEREDO,
     PKT_SRC_DEFRAG,
     PKT_SRC_FFR,
     PKT_SRC_STREAM_TCP_DETECTLOG_FLUSH,
@@ -48,11 +47,11 @@ void PacketFree(Packet *p);
 void PacketFreeOrRelease(Packet *p);
 int PacketCopyData(Packet *p, const uint8_t *pktdata, uint32_t pktlen);
 
-int DecodeEthernet(Packet *, const uint8_t *, uint32_t);
-int DecodeIPV4(Packet *, const uint8_t *, uint16_t);
-int DecodeIPV6(Packet *, const uint8_t *, uint16_t);
-int DecodeUDP(Packet *, const uint8_t *, uint16_t);
-int DecodeTCP(Packet *, const uint8_t *, uint16_t);
+int DecodeEthernet(ThreadVars *tv, Packet *, const uint8_t *, uint32_t);
+int DecodeIPV4(ThreadVars* tv, Packet *, const uint8_t *, uint16_t);
+int DecodeIPV6(ThreadVars* tv, Packet *, const uint8_t *, uint16_t);
+int DecodeUDP(ThreadVars* tv, Packet *, const uint8_t *, uint16_t);
+int DecodeTCP(ThreadVars* tv, Packet *, const uint8_t *, uint16_t);
 
 #define LINKTYPE_RAW         DLT_RAW
 #define MAX_PAYLOAD_SIZE (40 + 65536 + 28)
@@ -326,17 +325,17 @@ void AppLayerDecoderEventsResetEvents(AppLayerDecoderEvents *events);
     ENGINE_SET_EVENT(p, e); \
 } while(0)
 
-static inline bool DecodeNetworkLayer(const uint16_t proto, Packet *p, const uint8_t *data, const uint32_t len)
+static inline bool DecodeNetworkLayer(ThreadVars* tv, const uint16_t proto, Packet *p, const uint8_t *data, const uint32_t len)
 {
     switch (proto) {
         case ETHERNET_TYPE_IP: {
             uint16_t ip_len = (len < USHRT_MAX) ? (uint16_t)len : (uint16_t)USHRT_MAX;
-            DecodeIPV4(p, data, ip_len);
+            DecodeIPV4(tv, p, data, ip_len);
             break;
         }
         case ETHERNET_TYPE_IPV6: {
             uint16_t ip_len = (len < USHRT_MAX) ? (uint16_t)len : (uint16_t)USHRT_MAX;
-            DecodeIPV6(p, data, ip_len);
+            DecodeIPV6(tv, p, data, ip_len);
             break;
         }
         default:

@@ -4,6 +4,7 @@
 #include "modules/tm-threads-common.h"
 #include "decode.h"
 #include "utils/util-print.h"
+#include "modules/threadvars.h"
 
 static int DecodeIPV6Packet (Packet *p, const uint8_t *pkt, uint16_t len)
 {
@@ -31,8 +32,10 @@ static int DecodeIPV6Packet (Packet *p, const uint8_t *pkt, uint16_t len)
     return 0;
 }
 
-int DecodeIPV6(Packet *p, const uint8_t *pkt, uint16_t len)
+int DecodeIPV6(ThreadVars* tv, Packet *p, const uint8_t *pkt, uint16_t len)
 {
+    tv->counter_ipv6++;
+
     /* do the actual decoding */
     int ret = DecodeIPV6Packet (p, pkt, len);
     if (unlikely(ret < 0)) {
@@ -55,11 +58,11 @@ int DecodeIPV6(Packet *p, const uint8_t *pkt, uint16_t len)
     switch(IPV6_GET_NH(p)) {
         case IPPROTO_TCP:
             IPV6_SET_L4PROTO (p, IPPROTO_TCP);
-            DecodeTCP(p, pkt + IPV6_HEADER_LEN, IPV6_GET_PLEN(p));
+            DecodeTCP(tv, p, pkt + IPV6_HEADER_LEN, IPV6_GET_PLEN(p));
             return TM_ECODE_OK;
         case IPPROTO_UDP:
             IPV6_SET_L4PROTO (p, IPPROTO_UDP);
-            DecodeUDP(p, pkt + IPV6_HEADER_LEN, IPV6_GET_PLEN(p));
+            DecodeUDP(tv, p, pkt + IPV6_HEADER_LEN, IPV6_GET_PLEN(p));
             return TM_ECODE_OK;
         case IPPROTO_ICMPV6:
             IPV6_SET_L4PROTO (p, IPPROTO_ICMPV6);

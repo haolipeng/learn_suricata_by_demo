@@ -388,7 +388,7 @@ static TmEcode DecodePcapFile(ThreadVars *tv, Packet *p, void *data)
     if(ValidateLinkType(p->datalink, &decoder) == TM_ECODE_OK) {
 
         /* call the decoder */
-        decoder(p, GET_PKT_DATA(p), GET_PKT_LEN(p));
+        decoder(tv, p, GET_PKT_DATA(p), GET_PKT_LEN(p));
 
 #ifdef DEBUG
         BUG_ON(p->pkt_src != PKT_SRC_WIRE && p->pkt_src != PKT_SRC_FFR);

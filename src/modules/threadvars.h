@@ -78,6 +78,13 @@ typedef struct ThreadVars_ {
 
     struct FlowQueue_ *flow_queue;
     bool break_loop;
+
+    uint16_t counter_ipv4;
+    uint16_t counter_ipv6;
+    uint16_t counter_tcp;
+    uint16_t counter_udp;
+    uint16_t counter_icmpv4;
+    uint16_t counter_others;
 }ThreadVars;
 
 #endif // NET_THREAT_DETECT_THREADVARS_H
