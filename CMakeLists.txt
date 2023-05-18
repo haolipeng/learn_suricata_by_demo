@@ -24,6 +24,11 @@ add_executable(net_threat_detect
         src/base.h
         src/apis.h
 
+        /*common*/
+        src/common/address-port.h  src/common/packet-define.h
+        src/common/autoconf.h
+        src/common/common.h
+
         /*reassemble*/
         src/reassemble/stream.h src/reassemble/tree.h
         src/reassemble/stream-tcp.h src/reassemble/stream-tcp.c
@@ -35,10 +40,11 @@ add_executable(net_threat_detect
         src/reassemble/stream-tcp-sack.h src/reassemble/stream-tcp-sack.c
 
         /*decode*/
-        src/decode/decode-ethernet.h src/decode/decode-ethernet.c
-        src/decode/decode-ipv4.h src/decode/decode-ipv4.c src/decode/decode-ipv6.h
-        src/decode/decode-tcp.h src/decode/decode-tcp.c
-        src/decode/decode-udp.h src/decode/decode-udp.c
+        src/decode/decode-ethernet.c src/decode/decode-ethernet.h
+        src/decode/decode-ipv4.c src/decode/decode-ipv4.h
+        src/decode/decode-ipv6.c src/decode/decode-ipv6.h
+        src/decode/decode-tcp.c src/decode/decode-tcp.h
+        src/decode/decode-udp.c src/decode/decode-udp.h
         src/decode/decode.c src/decode/decode.h
         src/decode/decode-thread-var.h src/decode/decode-thread-var.c
         src/decode/decode-events.h src/decode/decode-vlan.h
@@ -66,6 +72,10 @@ add_executable(net_threat_detect
         src/utils/util-exception-policy.h src/utils/util-exception-policy.c
         src/utils/util-ioctl.h src/utils/util-ioctl.c
         src/utils/util-optimize.h src/utils/util-mem.h
+        src/utils/packet-queue.h src/utils/packet-queue.c
+        src/utils/conf-yaml-loader.c src/utils/conf-yaml-loader.h
+        src/utils/util-print.h src/utils/util-print.c
+        src/utils/queue.h src/utils/threads.h
 
         /*flow*/
         src/flow/flow-manager.h src/flow/flow-manager.c
@@ -81,25 +91,31 @@ add_executable(net_threat_detect
         src/app-layer/app-layer-events.h src/app-layer/app-layer-events.c
         src/app-layer/app-layer-parser.h src/app-layer/app-layer-parser.c
 
+        /*detect*/
+        src/detect/detect.h
+
         /*dpi*/
-        src/dpi/dpi_module.h src/common/common.h src/dpi/main.h
+        src/dpi/dpi_module.h src/dpi/main.h
         src/dpi/dpi_entry.c src/dpi/dpi_entry.h
-        src/utils/packet-queue.h src/utils/packet-queue.c
+
+        /*modules*/
         src/modules/tmqh-packetpool.h src/modules/tmqh-packetpool.c
-        src/detect/detect.h src/common/address-port.h src/utils/queue.h src/common/packet-define.h
-        src/modules/threadvars.h src/utils/threads.h
-        src/common/autoconf.h
+
+        src/modules/threadvars.h
+
         src/modules/tm-threads.h src/modules/tm-threads.c
         src/modules/tm-queues.h src/modules/tm-queues.c
         src/modules/tm-queuehandlers.h src/modules/tm-queuehandlers.c
-
         src/modules/source-af-packet.h src/modules/source-af-packet.c
         src/modules/tm-modules.h src/modules/tm-modules.c
-        src/modules/tm-threads-common.h src/modules/runmode-af-packet.h src/modules/runmode-af-packet.c
+        src/modules/tm-threads-common.h
+        src/modules/runmode-af-packet.h src/modules/runmode-af-packet.c
         src/modules/runmodes.c src/modules/runmodes.h
         src/modules/runmode-pcap-file.h src/modules/runmode-pcap-file.c
-        src/utils/conf-yaml-loader.c src/utils/conf-yaml-loader.h
-        src/decode/decode-ipv6.c src/modules/source-pcap-file.h src/modules/source-pcap-file.c src/modules/source-pcap-file-helper.h src/modules/source-pcap-file-helper.c src/modules/source-pcap-file-directory-helper.h src/modules/source-pcap-file-directory-helper.c src/utils/util-print.h src/utils/util-print.c)
+        src/modules/source-pcap-file.h src/modules/source-pcap-file.c
+        src/modules/source-pcap-file-helper.h src/modules/source-pcap-file-helper.c
+        src/modules/source-pcap-file-directory-helper.h src/modules/source-pcap-file-directory-helper.c
+        )
 
 target_link_libraries(net_threat_detect
         pthread
