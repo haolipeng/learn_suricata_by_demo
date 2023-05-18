@@ -12,6 +12,10 @@
 #define TM_FLAG_MANAGEMENT_TM   0x20
 #define TM_FLAG_COMMAND_TM      0x40
 
+typedef TmEcode (*ThreadInitFunc)(ThreadVars *, const void *, void **);
+typedef TmEcode (*ThreadDeinitFunc)(ThreadVars *, void *);
+typedef void (*ThreadExitPrintStatsFunc)(ThreadVars *, void *);
+
 typedef struct TmModule_ {
     const char *name;
 
@@ -35,6 +39,20 @@ typedef struct TmModule_ {
 } TmModule;
 
 extern TmModule tmm_modules[TMM_SIZE];
+
+/**
+ * Structure that output modules use to maintain private data.
+ */
+typedef struct OutputCtx_ {
+
+    /** Pointer to data private to the output. */
+    void *data;
+
+    /** Pointer to a cleanup function. */
+    void (*DeInit)(struct OutputCtx_ *);
+
+    TAILQ_HEAD(, OutputModule_) submodules;
+} OutputCtx;
 
 //extern function
 TmModule *TmModuleGetByName(const char *name);

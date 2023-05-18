@@ -315,6 +315,11 @@ void PreRunInit(const int runmode)
     StreamTcpInitConfig(STREAM_VERBOSE);
 }
 
+void PreRunPostPrivsDropInit(const int runmode)
+{
+    RunModeInitializeOutputs();
+}
+
 int PostConfLoadedSetup(SCInstance *suri)
 {
     //Get custom runmode

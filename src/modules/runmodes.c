@@ -1,3 +1,4 @@
+#include <stdio.h>
 #include "runmodes.h"
 #include "base.h"
 #include "utils/util-debug.h"
@@ -6,6 +7,9 @@
 #include "flow/flow-manager.h"
 #include "runmode-pcap-file.h"
 #include "utils/util-mem.h"
+#include "common/common.h"
+#include "app-layer/app-layer-protos.h"
+#include "output/output.h"
 
 typedef struct RunMode_ {
     /* the runmode type */
@@ -23,6 +27,18 @@ typedef struct RunModes_ {
 
 static RunModes runmodes[RUNMODE_USER_MAX];
 static char *active_runmode;
+
+static LoggerId logger_bits[ALPROTO_MAX];
+
+/* free list for our outputs */
+typedef struct OutputFreeList_ {
+    OutputModule *output_module;
+    OutputCtx *output_ctx;
+
+    TAILQ_ENTRY(OutputFreeList_) entries;
+} OutputFreeList;
+static TAILQ_HEAD(, OutputFreeList_) output_free_list =
+        TAILQ_HEAD_INITIALIZER(output_free_list);
 
 void RunModeRegisterNewRunMode(enum RunModes runmode,
                                const char *name,
@@ -167,4 +183,172 @@ void RunModeDispatch(int runmode, const char *custom_mode)
         FlowManagerThreadSpawn();
         FlowRecyclerThreadSpawn();
     }
+}
+
+static void AddOutputToFreeList(OutputModule *module, OutputCtx *output_ctx)
+{
+    OutputFreeList *fl_output = SCCalloc(1, sizeof(OutputFreeList));
+    if (unlikely(fl_output == NULL))
+        return;
+    fl_output->output_module = module;
+    fl_output->output_ctx = output_ctx;
+    TAILQ_INSERT_TAIL(&output_free_list, fl_output, entries);
+}
+
+static void SetupOutput(const char *name, OutputModule *module, OutputCtx *output_ctx)
+{
+    /* flow logger doesn't run in the packet path */
+    if (module->FlowLogFunc) {
+        OutputRegisterFlowLogger(module->name, module->FlowLogFunc,
+                                 output_ctx, module->ThreadInit, module->ThreadDeinit,
+                                 module->ThreadExitPrintStats);
+        return;
+    }
+}
+
+static void RunModeInitializeEveOutput(ConfNode *conf, OutputCtx *parent_ctx)
+{
+    ConfNode *types = ConfNodeLookupChild(conf, "types");
+    SCLogDebug("types %p", types);
+    if (types == NULL) {
+        return;
+    }
+
+    ConfNode *type = NULL;
+    TAILQ_FOREACH(type, &types->head, next) {
+        SCLogConfig("enabling 'eve-log' module '%s'", type->val);
+
+        int sub_count = 0;
+        char subname[256];
+        snprintf(subname, sizeof(subname), "eve-log.%s", type->val);
+
+        ConfNode *sub_output_config = ConfNodeLookupChild(type, type->val);
+        if (sub_output_config != NULL) {
+            const char *enabled = ConfNodeLookupChildValue(
+                    sub_output_config, "enabled");
+            if (enabled != NULL && !ConfValIsTrue(enabled)) {
+                continue;
+            }
+        }
+
+        /* Now setup all registers logger of this name. */
+        OutputModule *sub_module;
+        TAILQ_FOREACH(sub_module, &output_modules, entries) {
+            if (strcmp(subname, sub_module->conf_name) == 0) {
+                sub_count++;
+
+                if (sub_module->parent_name == NULL ||
+                    strcmp(sub_module->parent_name, "eve-log") != 0) {
+                    FatalError(SC_ERR_INVALID_ARGUMENT,
+                               "bad parent for %s", subname);
+                }
+                if (sub_module->InitSubFunc == NULL) {
+                    FatalError(SC_ERR_INVALID_ARGUMENT,
+                               "bad sub-module for %s", subname);
+                }
+
+                /* pass on parent output_ctx */
+                OutputInitResult result =
+                        sub_module->InitSubFunc(sub_output_config, parent_ctx);
+                if (!result.ok || result.ctx == NULL) {
+                    continue;
+                }
+
+                AddOutputToFreeList(sub_module, result.ctx);
+                SetupOutput(sub_module->name, sub_module,result.ctx);
+            }
+        }
+
+        /* Error is no registered loggers with this name
+         * were found .*/
+        if (!sub_count) {
+            FatalErrorOnInit(SC_ERR_INVALID_ARGUMENT,
+                             "No output module named %s", subname);
+            continue;
+        }
+    }
+}
+
+void RunModeInitializeOutputs(void)
+{
+    ConfNode *outputs = ConfGetNode("outputs");
+    if (outputs == NULL) {
+        /* No "outputs" section in the configuration. */
+        return;
+    }
+
+    ConfNode *output, *output_config;
+    const char *enabled;
+
+    memset(&logger_bits, 0, sizeof(logger_bits));
+
+    TAILQ_FOREACH(output, &outputs->head, next) {
+
+        output_config = ConfNodeLookupChild(output, output->val);
+        if (output_config == NULL) {
+            /* Shouldn't happen. */
+            FatalError(SC_ERR_INVALID_ARGUMENT,
+                       "Failed to lookup configuration child node: %s", output->val);
+        }
+
+        enabled = ConfNodeLookupChildValue(output_config, "enabled");
+        if (enabled == NULL || !ConfValIsTrue(enabled)) {
+            continue;
+        }
+
+        if (strcmp(output->val, "dns-log") == 0) {
+            SCLogWarning(SC_ERR_NOT_SUPPORTED,
+                         "dns-log is not longer available as of Suricata 5.0");
+            continue;
+        }
+
+        OutputModule *module;
+        int count = 0;
+        TAILQ_FOREACH(module, &output_modules, entries) {
+            if (strcmp(module->conf_name, output->val) != 0) {
+                continue;
+            }
+
+            count++;
+
+            OutputCtx *output_ctx = NULL;
+            if (module->InitFunc != NULL) {
+                OutputInitResult r = module->InitFunc(output_config);
+                if (!r.ok) {
+                    FatalErrorOnInit(SC_ERR_INVALID_ARGUMENT,
+                                     "output module \"%s\": setup failed", output->val);
+                    continue;
+                } else if (r.ctx == NULL) {
+                    continue;
+                }
+                output_ctx = r.ctx;
+            } else if (module->InitSubFunc != NULL) {
+                SCLogInfo("skipping submodule");
+                continue;
+            }
+
+            // TODO if module == parent, find it's children
+            if (strcmp(output->val, "eve-log") == 0) {
+                RunModeInitializeEveOutput(output_config, output_ctx);
+
+                /* add 'eve-log' to free list as it's the owner of the
+                 * main output ctx from which the sub-modules share the
+                 * LogFileCtx */
+                AddOutputToFreeList(module, output_ctx);
+            } else {
+                AddOutputToFreeList(module, output_ctx);
+                SetupOutput(module->name, module, output_ctx);
+            }
+        }
+        if (count == 0) {
+            FatalErrorOnInit(SC_ERR_INVALID_ARGUMENT,
+                             "No output module named %s", output->val);
+            continue;
+        }
+    }
+
+    //TODO:not register to the app-layer
+    /* register the logger bits to the app-layer */
+
+    OutputSetupActiveLoggers();
 }

@@ -19,4 +19,6 @@ void RunModeRegisterNewRunMode(enum RunModes, const char *, const char *,
 void RunModeRegisterRunModes(void);
 void RunModeDispatch(int runmode, const char *custom_mode);
 char *RunmodeGetActive(void);
+
+void RunModeInitializeOutputs(void);
 #endif //NET_THREAT_DETECT_RUNMODES_H
