@@ -39,6 +39,7 @@
 
 #include "reassemble/stream-tcp.h"
 #include "utils/util-hash-lookup3.h"
+#include "output/output-flow.h"
 
 extern TcpStreamCnf stream_config;
 uint16_t g_vlan_mask = 0xffff;
@@ -970,6 +971,10 @@ static Flow *FlowGetUsedFlow(ThreadVars *tv, DecodeThreadVars *dtv, const struct
         f->flow_end_flags |= FLOW_END_FLAG_FORCED;
         if (SC_ATOMIC_GET(flow_flags) & FLOW_EMERGENCY)
             f->flow_end_flags |= FLOW_END_FLAG_EMERGENCY;
+
+        if (dtv->output_flow_thread_data) {
+            (void)OutputFlowLog(tv, dtv->output_flow_thread_data, f);
+        }
 
         FlowClearMemory(f, f->protomap);
 

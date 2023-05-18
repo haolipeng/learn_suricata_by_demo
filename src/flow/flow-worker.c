@@ -8,6 +8,8 @@
 #include "modules/tmqh-packetpool.h"
 #include "modules/tm-modules.h"
 #include "utils/util-time.h"
+#include "output/output-flow.h"
+#include "output/output.h"
 #include <stdint.h>
 
 typedef DetectEngineThreadCtx* DetectEngineThreadCtxPtr;
@@ -138,9 +140,8 @@ static void CheckWorkQueue(ThreadVars *tv,FlowWorkerThreadData *fw,
         /* no one is referring to this flow, use_cnt 0, removed from hash
          * so we can unlock it and pass it to the flow recycler */
 
-        //TODO:modify by haolipeng,flow流的输出接口
-        //if (fw->output_thread_flow != NULL)
-            //(void)OutputFlowLog(tv, fw->output_thread_flow, f);
+        if (fw->output_thread_flow != NULL)
+            (void)OutputFlowLog(tv, fw->output_thread_flow, f);
 
         FlowClearMemory (f, f->protomap);
         FLOWLOCK_UNLOCK(f);
@@ -213,11 +214,11 @@ static TmEcode FlowWorkerThreadInit(ThreadVars *tv,const void *initdata, void **
         return TM_ECODE_FAILED;
     }*/
 
-    /*if (OutputFlowLogThreadInit(tv, NULL, &fw->output_thread_flow) != TM_ECODE_OK) {
+    if (OutputFlowLogThreadInit(tv, NULL, &fw->output_thread_flow) != TM_ECODE_OK) {
         SCLogError(SC_ERR_THREAD_INIT, "initializing flow log API for thread failed");
         FlowWorkerThreadDeinit(tv, fw);
         return TM_ECODE_FAILED;
-    }*/
+    }
 
     //DecodeRegisterPerfCounters(fw->dtv, tv);
     //AppLayerRegisterThreadCounters(tv);
@@ -245,8 +246,8 @@ static TmEcode FlowWorkerThreadDeinit(ThreadVars *tv, void *data)
     }*/
 
     /* Free output function */
-    //OutputLoggerThreadDeinit(tv, fw->output_thread);
-    //OutputFlowLogThreadDeinit(tv, fw->output_thread_flow);
+    OutputLoggerThreadDeinit(tv, fw->output_thread);
+    OutputFlowLogThreadDeinit(tv, fw->output_thread_flow);
 
     /* free pq */
     BUG_ON(fw->pq.len);

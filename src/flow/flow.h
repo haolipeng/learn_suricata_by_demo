@@ -507,6 +507,19 @@ static inline void FlowDeReference(Flow **d)
     }
 }
 
+static inline void FlowSetEndFlags(Flow *f)
+{
+    const int state = f->flow_state;
+    if (state == FLOW_STATE_NEW)
+        f->flow_end_flags |= FLOW_END_FLAG_STATE_NEW;
+    else if (state == FLOW_STATE_ESTABLISHED)
+        f->flow_end_flags |= FLOW_END_FLAG_STATE_ESTABLISHED;
+    else if (state == FLOW_STATE_CLOSED)
+        f->flow_end_flags |= FLOW_END_FLAG_STATE_CLOSED;
+    else if (state == FLOW_STATE_LOCAL_BYPASSED)
+        f->flow_end_flags |= FLOW_END_FLAG_STATE_BYPASSED;
+}
+
 static inline bool FlowIsBypassed(const Flow *f)
 {
     if (f->flow_state == FLOW_STATE_LOCAL_BYPASSED) {

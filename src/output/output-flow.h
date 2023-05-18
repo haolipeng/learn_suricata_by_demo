@@ -11,4 +11,9 @@ int OutputRegisterFlowLogger(const char *name, FlowLogger LogFunc,
                              OutputCtx *output_ctx, ThreadInitFunc ThreadInit,
                              ThreadDeinitFunc ThreadDeinit,
                              ThreadExitPrintStatsFunc ThreadExitPrintStats);
+
+//Output flow log
+TmEcode OutputFlowLog(ThreadVars *tv, void *thread_data, Flow *f);
+TmEcode OutputFlowLogThreadInit(ThreadVars *tv, void *initdata, void **data);
+TmEcode OutputFlowLogThreadDeinit(ThreadVars *tv, void *thread_data);
 #endif //NET_THREAT_DETECT_OUTPUT_FLOW_H

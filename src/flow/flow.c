@@ -325,102 +325,85 @@ static inline void FlowUpdateEthernet(ThreadVars *tv, DecodeThreadVars *dtv,
  */
 void FlowHandlePacketUpdate(Flow *f, Packet *p, ThreadVars *tv, DecodeThreadVars *dtv)
 {
-  SCLogDebug("packet %"PRIu64" -- flow %p", p->pcap_cnt, f);
+    SCLogDebug("packet %"PRIu64" -- flow %p", p->pcap_cnt, f);
 
-#ifdef CAPTURE_OFFLOAD
-  int state = f->flow_state;
-
-  if (state != FLOW_STATE_CAPTURE_BYPASSED) {
-#endif
     /* update the last seen timestamp of this flow */
     if (timercmp(&p->ts, &f->lastts, >)) {
-      COPY_TIMESTAMP(&p->ts, &f->lastts);
-      const uint32_t timeout_at = (uint32_t)f->lastts.tv_sec + f->timeout_policy;
-      if (timeout_at != f->timeout_at) {
-        f->timeout_at = timeout_at;
-      }
+        COPY_TIMESTAMP(&p->ts, &f->lastts);
+        const uint32_t timeout_at = (uint32_t)f->lastts.tv_sec + f->timeout_policy;
+        if (timeout_at != f->timeout_at) {
+            f->timeout_at = timeout_at;
+        }
     }
-#ifdef CAPTURE_OFFLOAD
-  } else {
-    /* still seeing packet, we downgrade to local bypass */
-    if (p->ts.tv_sec - f->lastts.tv_sec > FLOW_BYPASSED_TIMEOUT / 2) {
-      SCLogDebug("Downgrading flow to local bypass");
-      COPY_TIMESTAMP(&p->ts, &f->lastts);
-      FlowUpdateState(f, FLOW_STATE_LOCAL_BYPASSED);
+
+    /* update flags and counters */
+    if (FlowGetPacketDirection(f, p) == TOSERVER) {
+        f->todstpktcnt++;
+        f->todstbytecnt += GET_PKT_LEN(p);
+        p->flowflags = FLOW_PKT_TOSERVER;
+        if (!(f->flags & FLOW_TO_DST_SEEN)) {
+            if (FlowUpdateSeenFlag(p)) {
+                f->flags |= FLOW_TO_DST_SEEN;
+                p->flowflags |= FLOW_PKT_TOSERVER_FIRST;
+            }
+        }
+        /* xfer proto detect ts flag to first packet in ts dir */
+        if (f->flags & FLOW_PROTO_DETECT_TS_DONE) {
+            f->flags &= ~FLOW_PROTO_DETECT_TS_DONE;
+            p->flags |= PKT_PROTO_DETECT_TS_DONE;
+        }
+        FlowUpdateEthernet(tv, dtv, f, p->ethh, true);
     } else {
-      /* In IPS mode the packet could come from the other interface so it would
-             * need to be bypassed */
+        f->tosrcpktcnt++;
+        f->tosrcbytecnt += GET_PKT_LEN(p);
+        p->flowflags = FLOW_PKT_TOCLIENT;
+        if (!(f->flags & FLOW_TO_SRC_SEEN)) {
+            if (FlowUpdateSeenFlag(p)) {
+                f->flags |= FLOW_TO_SRC_SEEN;
+                p->flowflags |= FLOW_PKT_TOCLIENT_FIRST;
+            }
+        }
+        /* xfer proto detect tc flag to first packet in tc dir */
+        if (f->flags & FLOW_PROTO_DETECT_TC_DONE) {
+            f->flags &= ~FLOW_PROTO_DETECT_TC_DONE;
+            p->flags |= PKT_PROTO_DETECT_TC_DONE;
+        }
+        FlowUpdateEthernet(tv, dtv, f, p->ethh, false);
     }
-  }
-#endif
-  /* update flags and counters */
-  if (FlowGetPacketDirection(f, p) == TOSERVER) {
-    f->todstpktcnt++;
-    f->todstbytecnt += GET_PKT_LEN(p);
-    p->flowflags = FLOW_PKT_TOSERVER;
-    if (!(f->flags & FLOW_TO_DST_SEEN)) {
-      if (FlowUpdateSeenFlag(p)) {
-        f->flags |= FLOW_TO_DST_SEEN;
-        p->flowflags |= FLOW_PKT_TOSERVER_FIRST;
-      }
-    }
-    /* xfer proto detect ts flag to first packet in ts dir */
-    if (f->flags & FLOW_PROTO_DETECT_TS_DONE) {
-      f->flags &= ~FLOW_PROTO_DETECT_TS_DONE;
-      p->flags |= PKT_PROTO_DETECT_TS_DONE;
-    }
-    FlowUpdateEthernet(tv, dtv, f, p->ethh, true);
-  } else {
-    f->tosrcpktcnt++;
-    f->tosrcbytecnt += GET_PKT_LEN(p);
-    p->flowflags = FLOW_PKT_TOCLIENT;
-    if (!(f->flags & FLOW_TO_SRC_SEEN)) {
-      if (FlowUpdateSeenFlag(p)) {
-        f->flags |= FLOW_TO_SRC_SEEN;
-        p->flowflags |= FLOW_PKT_TOCLIENT_FIRST;
-      }
-    }
-    /* xfer proto detect tc flag to first packet in tc dir */
-    if (f->flags & FLOW_PROTO_DETECT_TC_DONE) {
-      f->flags &= ~FLOW_PROTO_DETECT_TC_DONE;
-      p->flags |= PKT_PROTO_DETECT_TC_DONE;
-    }
-    FlowUpdateEthernet(tv, dtv, f, p->ethh, false);
-  }
 
-  if (f->flow_state == FLOW_STATE_ESTABLISHED) {
-    SCLogDebug("pkt %p FLOW_PKT_ESTABLISHED", p);
-    p->flowflags |= FLOW_PKT_ESTABLISHED;
+    if (f->flow_state == FLOW_STATE_ESTABLISHED) {
+        SCLogDebug("pkt %p FLOW_PKT_ESTABLISHED", p);
+        p->flowflags |= FLOW_PKT_ESTABLISHED;
 
-  } else if (f->proto == IPPROTO_TCP) {
-    TcpSession *ssn = (TcpSession *)f->protoctx;
-    if (ssn != NULL && ssn->state >= TCP_ESTABLISHED) {
-      p->flowflags |= FLOW_PKT_ESTABLISHED;
+    } else if (f->proto == IPPROTO_TCP) {
+        TcpSession *ssn = (TcpSession *)f->protoctx;
+        if (ssn != NULL && ssn->state >= TCP_ESTABLISHED) {
+            p->flowflags |= FLOW_PKT_ESTABLISHED;
+        }
+    } else if ((f->flags & (FLOW_TO_DST_SEEN|FLOW_TO_SRC_SEEN)) ==
+               (FLOW_TO_DST_SEEN|FLOW_TO_SRC_SEEN)) {
+        SCLogDebug("pkt %p FLOW_PKT_ESTABLISHED", p);
+        p->flowflags |= FLOW_PKT_ESTABLISHED;
+
+        FlowUpdateState(f, FLOW_STATE_ESTABLISHED);
     }
-  } else if ((f->flags & (FLOW_TO_DST_SEEN|FLOW_TO_SRC_SEEN)) ==
-             (FLOW_TO_DST_SEEN|FLOW_TO_SRC_SEEN)) {
-    SCLogDebug("pkt %p FLOW_PKT_ESTABLISHED", p);
-    p->flowflags |= FLOW_PKT_ESTABLISHED;
 
-    FlowUpdateState(f, FLOW_STATE_ESTABLISHED);
-  }
+    /*set the detection bypass flags*/
+    if (f->flags & FLOW_NOPACKET_INSPECTION) {
+        SCLogDebug("setting FLOW_NOPACKET_INSPECTION flag on flow %p", f);
+        DecodeSetNoPacketInspectionFlag(p);
+    }
+    if (f->flags & FLOW_NOPAYLOAD_INSPECTION) {
+        SCLogDebug("setting FLOW_NOPAYLOAD_INSPECTION flag on flow %p", f);
+        DecodeSetNoPayloadInspectionFlag(p);
+    }
 
-  /*set the detection bypass flags*/
-  if (f->flags & FLOW_NOPACKET_INSPECTION) {
-    SCLogDebug("setting FLOW_NOPACKET_INSPECTION flag on flow %p", f);
-    DecodeSetNoPacketInspectionFlag(p);
-  }
-  if (f->flags & FLOW_NOPAYLOAD_INSPECTION) {
-    SCLogDebug("setting FLOW_NOPAYLOAD_INSPECTION flag on flow %p", f);
-    DecodeSetNoPayloadInspectionFlag(p);
-  }
-
-  /* update flow's ttl fields if needed */
-  if (PKT_IS_IPV4(p)) {
-    FlowUpdateTTL(f, p, IPV4_GET_IPTTL(p));
-  } else if (PKT_IS_IPV6(p)) {
-    FlowUpdateTTL(f, p, IPV6_GET_HLIM(p));
-  }
+    /* update flow's ttl fields if needed */
+    if (PKT_IS_IPV4(p)) {
+        FlowUpdateTTL(f, p, IPV4_GET_IPTTL(p));
+    } else if (PKT_IS_IPV6(p)) {
+        FlowUpdateTTL(f, p, IPV6_GET_HLIM(p));
+    }
 }
 
 /** \brief Entry point for packet flow handling

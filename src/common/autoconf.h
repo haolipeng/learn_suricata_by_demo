@@ -13,9 +13,6 @@
 /* Unix socket support enabled */
 #define BUILD_UNIX_SOCKET 1
 
-/* Building flow capture bypass code */
-//#define CAPTURE_OFFLOAD 1
-
 /* Building flow bypass manager code */
 #define CAPTURE_OFFLOAD_MANAGER 1
 

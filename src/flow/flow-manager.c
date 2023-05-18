@@ -28,6 +28,8 @@
 #include "modules/tm-threads-common.h"
 #include "modules/tm-modules.h"
 #include "dpi/main.h"
+#include "output/output-flow.h"
+#include "utils/util-mem.h"
 
 /** queue to pass flows to cleanup/log thread(s) */
 FlowQueue flow_recycle_q;
@@ -450,6 +452,8 @@ static void Recycler(ThreadVars *tv, void *output_thread_data, Flow *f)
 {
     FLOWLOCK_WRLOCK(f);
 
+    (void)OutputFlowLog(tv, output_thread_data, f);
+
     FlowClearMemory (f, f->protomap);
     FLOWLOCK_UNLOCK(f);
     FlowSparePoolReturnFlow(f);
@@ -781,6 +785,13 @@ static TmEcode FlowRecyclerThreadInit(ThreadVars *t, const void *initdata, void 
     if (ftd == NULL)
         return TM_ECODE_FAILED;
 
+    if (OutputFlowLogThreadInit(t, NULL, &ftd->output_thread_data) != TM_ECODE_OK) {
+        SCLogError(SC_ERR_THREAD_INIT, "initializing flow log API for thread failed");
+        SCFree(ftd);
+        return TM_ECODE_FAILED;
+    }
+    SCLogDebug("output_thread_data %p", ftd->output_thread_data);
+
     *data = ftd;
     return TM_ECODE_OK;
 }
@@ -788,6 +799,9 @@ static TmEcode FlowRecyclerThreadInit(ThreadVars *t, const void *initdata, void 
 static TmEcode FlowRecyclerThreadDeinit(ThreadVars *t, void *data)
 {
     FlowRecyclerThreadData *ftd = (FlowRecyclerThreadData *)data;
+    if(ftd->output_thread_data){
+        OutputFlowLogThreadDeinit(t, ftd->output_thread_data);
+    }
 
     free(ftd);
     return TM_ECODE_OK;

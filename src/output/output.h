@@ -35,6 +35,8 @@ typedef struct OutputModule_ {
 typedef TAILQ_HEAD(OutputModuleList_, OutputModule_) OutputModuleList;
 extern OutputModuleList output_modules;
 
+TmEcode OutputLoggerThreadDeinit(ThreadVars *, void *);
+
 void OutputSetupActiveLoggers(void);
 
 #endif //NET_THREAT_DETECT_OUTPUT_H
