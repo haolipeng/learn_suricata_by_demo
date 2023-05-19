@@ -265,8 +265,8 @@ void PacketPoolInit(void)
         PacketPoolStorePacket(p);
     }
 
-    //SCLogInfo("preallocated %"PRIiMAX" packets. Total memory %"PRIuMAX"",
-    //        max_pending_packets, (uintmax_t)(max_pending_packets*SIZE_OF_PACKET));
+    SCLogInfo("preallocated %"PRIiMAX" packets. Total memory %"PRIuMAX"",
+            max_pending_packets, (uintmax_t)(max_pending_packets*SIZE_OF_PACKET));
 }
 
 void PacketPoolDestroy(void)

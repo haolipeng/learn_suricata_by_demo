@@ -534,7 +534,7 @@ static int AFPDerefSocket(AFPPeer* peer)
 
   if (SC_ATOMIC_SUB(peer->sock_usage, 1) == 1) {
     if (SC_ATOMIC_GET(peer->state) == AFP_STATE_DOWN) {
-      //SCLogInfo("Cleaning socket connected to '%s'", peer->iface);
+      SCLogInfo("Cleaning socket connected to '%s'", peer->iface);
       close(SC_ATOMIC_GET(peer->socket));
       return 0;
     }
@@ -1148,7 +1148,7 @@ static int AFPTryReopen(AFPThreadVars *ptv)
     return afp_activate_r;
   }
 
-  //SCLogInfo("Interface '%s' is back", ptv->iface);
+  SCLogInfo("Interface '%s' is back", ptv->iface);
   return 0;
 }
 
@@ -1345,8 +1345,8 @@ static int AFPComputeRingParams(AFPThreadVars *ptv, int order)
     ptv->req.v2.tp_block_size = getpagesize() << order;
     int frames_per_block = ptv->req.v2.tp_block_size / ptv->req.v2.tp_frame_size;
     if (frames_per_block == 0) {
-    SCLogError(SC_ERR_INVALID_VALUE, "Frame size bigger than block size");
-    return -1;
+        SCLogError(SC_ERR_INVALID_VALUE, "Frame size bigger than block size");
+        return -1;
     }
     ptv->req.v2.tp_frame_nr = ptv->ring_size;
     ptv->req.v2.tp_block_nr = ptv->req.v2.tp_frame_nr / frames_per_block + 1;
@@ -1487,7 +1487,7 @@ static int AFPSetupRing(AFPThreadVars *ptv, char *devname)
 #endif
     for (order = AFP_BLOCK_SIZE_DEFAULT_ORDER; order >= 0; order--) {
       if (AFPComputeRingParams(ptv, order) != 1) {
-        //SCLogInfo("Ring parameter are incorrect. Please correct the devel");
+        SCLogInfo("Ring parameter are incorrect. Please correct the devel");
         return AFP_FATAL_ERROR;
       }
 
@@ -1496,7 +1496,7 @@ static int AFPSetupRing(AFPThreadVars *ptv, char *devname)
 
       if (r < 0) {
         if (errno == ENOMEM) {
-          //SCLogInfo("Memory issue with ring parameters. Retrying.");
+          SCLogInfo("Memory issue with ring parameters. Retrying.");
           continue;
         }
         SCLogError(SC_ERR_MEM_ALLOC,
