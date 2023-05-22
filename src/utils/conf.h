@@ -4,6 +4,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#define DEFAULT_LOG_DIR "/var/log/suricata"
 /**
  * Structure of a configuration parameter.
  */

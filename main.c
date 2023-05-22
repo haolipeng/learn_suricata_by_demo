@@ -22,6 +22,7 @@
 #include "utils/util-misc.h"
 #include "modules/source-pcap-file.h"
 #include "utils/util-ioctl.h"
+#include "output/output.h"
 
 #define DEFAULT_CONF_FILE "/etc/suricata/suricata.yaml"
 #define DEFAULT_MAX_PENDING_PACKETS 1024
@@ -182,6 +183,9 @@ void RegisterAllModules(void)
 
     /* flow worker */
     TmModuleFlowWorkerRegister();
+
+    /* log api */
+    TmModuleLoggerRegister();
 }
 
 int InitGlobal(void){

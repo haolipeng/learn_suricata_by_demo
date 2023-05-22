@@ -115,7 +115,7 @@ add_executable(net_threat_detect
         src/modules/source-pcap-file.h src/modules/source-pcap-file.c
         src/modules/source-pcap-file-helper.h src/modules/source-pcap-file-helper.c
         src/modules/source-pcap-file-directory-helper.h src/modules/source-pcap-file-directory-helper.c
-        src/output/output.h src/output/output.c src/output/output-flow.h src/output/output-flow.c)
+        src/output/output.h src/output/output.c src/output/output-flow.h src/output/output-flow.c src/output/output-json.h src/output/output-json.c src/utils/util-logopenfile.h src/output/output-json-flow.h src/output/output-json-flow.c src/utils/util-logopenfile.c src/utils/util-buffer.h src/utils/util-buffer.c)
 
 target_link_libraries(net_threat_detect
         pthread
@@ -123,4 +123,5 @@ target_link_libraries(net_threat_detect
         urcu
         pcre
         yaml
-        urcu-cds)
+        urcu-cds
+        jansson)

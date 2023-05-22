@@ -11,6 +11,11 @@ void TimeSetByThread(const int thread_id, const struct timeval *tv);
 void TimeGet(struct timeval *);
 void TimeModeSetOffline (void);
 
+uint64_t SCParseTimeSizeString (const char *str);
+uint64_t SCGetSecondsUntil (const char *str, time_t epoch);
+void CreateIsoTimeString (const struct timeval *ts, char *str, size_t size);
+int SCTimeToStringPattern (time_t epoch, const char *pattern, char *str, size_t size);
+
 /** \brief intialize a 'struct timespec' from a 'struct timeval'. */
 #define FROM_TIMEVAL(timev) { .tv_sec = (timev).tv_sec, .tv_nsec = (timev).tv_usec * 1000 }
 
