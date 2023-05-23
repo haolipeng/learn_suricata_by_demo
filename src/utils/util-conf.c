@@ -15,3 +15,14 @@ ConfNode *ConfFindDeviceConfig(ConfNode *node, const char *iface)
 
     return NULL;
 }
+
+const char *ConfigGetLogDirectory(void)
+{
+    const char *log_dir = NULL;
+
+    if (ConfGet("default-log-dir", &log_dir) != 1) {
+        log_dir = DEFAULT_LOG_DIR;
+    }
+
+    return log_dir;
+}

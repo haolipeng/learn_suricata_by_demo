@@ -100,4 +100,19 @@ typedef enum {
     LOGGER_JSON_METADATA,
     LOGGER_SIZE,
 } LoggerId;
+
+//TODO: set HAVE_FWRITE_UNLOCKED = 1
+#define HAVE_FWRITE_UNLOCKED 1
+
+#ifndef HAVE_FWRITE_UNLOCKED
+#define SCFwriteUnlocked    fwrite
+#define SCFflushUnlocked    fflush
+#define SCClearErrUnlocked  clearerr
+#define SCFerrorUnlocked    ferror
+#else
+#define SCFwriteUnlocked    fwrite_unlocked
+#define SCFflushUnlocked    fflush_unlocked
+#define SCClearErrUnlocked  clearerr_unlocked
+#define SCFerrorUnlocked    ferror_unlocked
+#endif
 #endif //NET_THREAT_DETECT_COMMON_H
