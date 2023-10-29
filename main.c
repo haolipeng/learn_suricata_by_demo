@@ -36,7 +36,6 @@ int g_threads = 1; //one capture thread per nic = 1
 
 __thread int THREAD_ID;
 
-struct timeval g_now;
 int g_default_mtu = 0;
 
 #define DEFAULT_MTU 1500
