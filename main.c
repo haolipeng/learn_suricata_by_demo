@@ -6,6 +6,7 @@
 #include <sys/time.h>
 #include <bits/types/sig_atomic_t.h>
 #include <sys/stat.h>
+#include <signal.h>
 
 #include "base.h"
 #include "utils/conf-yaml-loader.h"
@@ -23,6 +24,7 @@
 #include "modules/source-pcap-file.h"
 #include "utils/util-ioctl.h"
 #include "output/output.h"
+#include "utils/util-signal.h"
 
 #define DEFAULT_CONF_FILE "/etc/suricata/suricata.yaml"
 #define DEFAULT_MAX_PENDING_PACKETS 1024
@@ -105,6 +107,7 @@ static int ParseCommandLineAfpacket(SCInstance *suri, const char *in_arg)
   return TM_ECODE_OK;
 }
 
+//解析程序命令行参数
 static int ParseCommandLine(int argc, char **argv,SCInstance *suri){
     int arg = 0;
 
@@ -310,6 +313,33 @@ static int ConfigGetCaptureValue(SCInstance *suri)
     return TM_ECODE_OK;
 }
 
+static void SignalHandlerSigint(/*@unused@*/ int sig)
+{
+    sigint_count = 1;
+}
+static void SignalHandlerSigterm(/*@unused@*/ int sig)
+{
+    sigterm_count = 1;
+}
+
+/**
+ * SIGHUP handler.  Just set sighup_count.  The main loop will act on
+ * it.
+ */
+static void SignalHandlerSigHup(/*@unused@*/ int sig)
+{
+    sighup_count = 1;
+}
+
+static int InitSignalHandler(){
+    UtilSignalHandlerSetup(SIGINT, SignalHandlerSigint);
+    UtilSignalHandlerSetup(SIGTERM, SignalHandlerSigterm);
+
+    UtilSignalHandlerSetup(SIGHUP, SignalHandlerSigHup);
+
+    return TM_ECODE_OK;
+}
+
 void PreRunInit(const int runmode)
 {
     //TODO:modify by haolipeng
@@ -325,11 +355,14 @@ void PreRunPostPrivsDropInit(const int runmode)
 
 int PostConfLoadedSetup(SCInstance *suri)
 {
+    //TODO:load the pattern matchers
+
     //Get custom runmode
     if (suri->runmode_custom_mode) {
         ConfSet("runmode", suri->runmode_custom_mode);
     }
 
+    //TODO:load capture setting
     if (ConfigGetCaptureValue(suri) != TM_ECODE_OK) {
         return (TM_ECODE_FAILED);
     }
@@ -337,18 +370,20 @@ int PostConfLoadedSetup(SCInstance *suri)
     //thread modules queue handler setup
     TmqhSetup();
 
+    //TODO:register all modules
     RegisterAllModules();
 
+    //TODO:Module Run Init function
     TmModuleRunInit();
+
+    //TODO:need to add signal handler
+    if (InitSignalHandler(suri) != TM_ECODE_OK)
+        return TM_ECODE_FAILED;
 
     if(suri->disabled_detect){
         SCLogConfig("dectection engine disabled");
         (void)ConfSetFinal("stream.reassembly.raw", "false");
     }
-
-    //TODO:need to add signal handler
-    /*if (InitSignalHandler(suri) != TM_ECODE_OK)
-        return TM_ECODE_FAILED;*/
 
     LiveDeviceFinalize();
 
@@ -402,7 +437,10 @@ int main(int argc, char *argv[])
     SCInstanceInit(&suricata, argv[0]);
 
     //2.Global init
-    InitGlobal();
+    ret = InitGlobal();
+    if(ret != 0){
+        exit(EXIT_FAILURE);
+    }
 
     //3.解析程序命令行参数
     ParseCommandLine(argc, argv, &suricata);
