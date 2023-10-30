@@ -478,18 +478,6 @@ int main(int argc, char *argv[])
     /* Update the engine stage/status flag */
     SC_ATOMIC_SET(engine_stage, SURICATA_DEINIT);
 
-    //6.判断不同运行模式
-    /*if(NULL != g_pcap_path){
-        ret = pcap_run(g_pcap_path);
-    }else{
-        //Start capture interface
-        if(g_in_iface != NULL){
-            ret = net_run(g_in_iface);
-        }
-        if(g_virtual_iface != NULL){
-            ret = net_run(g_virtual_iface);
-        }
-    }*/
     printf("program is almost shutdown");
     return ret;
 }
