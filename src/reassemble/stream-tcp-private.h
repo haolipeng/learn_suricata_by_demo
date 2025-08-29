@@ -23,8 +23,8 @@ typedef struct TcpStateQueue_ {
 } TcpStateQueue;
 
 typedef struct StreamTcpSackRecord {
-    uint32_t le;    /**< left edge, host order */
-    uint32_t re;    /**< right edge, host order */
+    uint32_t le;    /**< left edge, host order 左侧边界*/
+    uint32_t re;    /**< right edge, host order 右侧边界*/
     RB_ENTRY(StreamTcpSackRecord) rb;
 } StreamTcpSackRecord;
 
