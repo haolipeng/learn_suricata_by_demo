@@ -18,7 +18,8 @@
 #include "flow/flow-worker.h"
 #include "utils/conf.h"
 #include "utils/util-device.h"
-#include "dpi/main.h"
+#include "utils/util-debug.h"
+#include "main.h"
 #include "reassemble/stream-tcp.h"
 #include "utils/util-misc.h"
 #include "modules/source-pcap-file.h"
@@ -194,8 +195,11 @@ int InitGlobal(void){
     //1.初始化engine state
     SC_ATOMIC_INIT(engine_stage);
 
-    //2.初始化日志系统
-    SCLogInitLogModule(NULL);
+    //2.初始化日志系统 - 设置为debug级别
+    SCLogInitData log_init_data;
+    memset(&log_init_data, 0, sizeof(log_init_data));
+    log_init_data.global_log_level = SC_LOG_DEBUG;  // 设置为debug级别
+    SCLogInitLogModule(&log_init_data);
 
     //3.初始化util-misc
     ParseSizeInit();

@@ -50,6 +50,30 @@ int LiveRegisterDevice(const char *dev)
     return 0;
 }
 
+const char *LiveGetShortName(const char *dev)
+{
+    LiveDevice *live_dev = LiveGetDevice(dev);
+    if (live_dev == NULL)
+        return NULL;
+    return live_dev->dev_short;
+}
+
+const char *LiveGetDeviceName(int number)
+{
+    int i = 0;
+    LiveDevice *pd;
+
+    TAILQ_FOREACH(pd, &live_devices, next) {
+        if (i == number) {
+            return pd->dev;
+        }
+
+        i++;
+    }
+
+    return NULL;
+}
+
 int LiveGetDeviceCount(void)
 {
     int i = 0;

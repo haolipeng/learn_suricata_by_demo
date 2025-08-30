@@ -375,6 +375,26 @@ int ConfGetInt(const char *name, intmax_t *val)
   return 1;
 }
 
+int ConfGetFloat(const char *name, float *val)
+{
+    const char *strval = NULL;
+    double tmpfl;
+    char *endptr;
+
+    if (ConfGet(name, &strval) == 0)
+        return 0;
+
+    errno = 0;
+    tmpfl = strtof(strval, &endptr);
+    if (strval[0] == '\0' || *endptr != '\0')
+        return 0;
+    if (errno == ERANGE)
+        return 0;
+
+    *val = tmpfl;
+    return 1;
+}
+
 int ConfGetBool(const char *name, int *val)
 {
   const char *strval = NULL;

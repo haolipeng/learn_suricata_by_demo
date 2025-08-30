@@ -11,6 +11,7 @@
 #include "utils/util-conf.h"
 #include "utils/util-byte.h"
 #include "utils/util-time.h"
+#include "utils/util-device.h"
 
 /* if cluster id is not set, assign it automagically, uniq value per
  * interface. */
@@ -22,36 +23,53 @@ const char *RunModeAFPGetDefaultMode(void)
     return "workers";
 }
 
-static int RunModeSetLiveCaptureWorkersForDevice(const char *recv_mod_name,
-                                                 const char *decode_mod_name, const char *thread_name,
-                                                 const char *live_dev,void *aconf,
-                                                 unsigned char single_mode)
+static int RunModeSetLiveCaptureWorkersForDevice(ConfigIfaceThreadsCountFunc ModThreadsCount,
+                              const char *recv_mod_name,
+                              const char *decode_mod_name, const char *thread_name,
+                              const char *live_dev, void *aconf,
+                              unsigned char single_mode)
 {
     int threads_count;
+    //uint16_t thread_max = TmThreadsGetWorkerThreadMax();
+    //modify by haolipeng
+    uint16_t thread_max = 32;
 
     if (single_mode) {
         threads_count = 1;
-    } else{
-        threads_count = 1;
+    } else {
+        threads_count = MIN(ModThreadsCount(aconf), thread_max);
+        SCLogInfo("Going to use %" PRId32 " thread(s)", threads_count);
     }
+
     /* create the threads */
     for (int thread = 0; thread < threads_count; thread++) {
         char tname[TM_THREAD_NAME_MAX];
         TmModule *tm_module = NULL;
-        const char *visual_devname = live_dev;
+        const char *visual_devname = LiveGetShortName(live_dev);
+        char *printable_threadname = SCMalloc(sizeof(char) * (strlen(thread_name)+5+strlen(live_dev)));
+        if (unlikely(printable_threadname == NULL)) {
+            FatalError(SC_ERR_MEM_ALLOC, "failed to alloc printable thread name: %s", strerror(errno));
+            exit(EXIT_FAILURE);
+        }
+
         if (single_mode) {
             snprintf(tname, sizeof(tname), "%s#01-%s", thread_name, visual_devname);
+            snprintf(printable_threadname, strlen(thread_name)+5+strlen(live_dev), "%s#01-%s",
+                     thread_name, live_dev);
         } else {
             snprintf(tname, sizeof(tname), "%s#%02d-%s", thread_name,
                      thread+1, visual_devname);
+            snprintf(printable_threadname, strlen(thread_name)+5+strlen(live_dev), "%s#%02d-%s",
+                     thread_name, thread+1, live_dev);
         }
         ThreadVars *tv = TmThreadCreatePacketHandler(tname,
-                                                     "packetpool", "packetpool",
-                                                     "packetpool", "packetpool",
-                                                     "pktacqloop");
+                "packetpool", "packetpool",
+                "packetpool", "packetpool",
+                "pktacqloop");
         if (tv == NULL) {
             FatalError(SC_ERR_THREAD_CREATE, "TmThreadsCreate failed");
         }
+        //tv->printable_name = printable_threadname;
 
         tm_module = TmModuleGetByName(recv_mod_name);
         if (tm_module == NULL) {
@@ -70,6 +88,19 @@ static int RunModeSetLiveCaptureWorkersForDevice(const char *recv_mod_name,
             FatalError(SC_ERR_RUNMODE, "TmModuleGetByName for FlowWorker failed");
         }
         TmSlotSetFuncAppend(tv, tm_module, NULL);
+
+        //modify by haolipeng
+        // 暂时注释掉RespondReject模块，因为它没有被注册
+        /*
+        tm_module = TmModuleGetByName("RespondReject");
+        if (tm_module == NULL) {
+            FatalError(SC_ERR_RUNMODE, "TmModuleGetByName RespondReject failed");
+        }
+        TmSlotSetFuncAppend(tv, tm_module, NULL);
+        */
+
+        //modify by haolipeng
+        //TmThreadSetCPU(tv, WORKER_CPU_SET);
 
         if (TmThreadSpawn(tv) != TM_ECODE_OK) {
             FatalError(SC_ERR_THREAD_SPAWN, "TmThreadSpawn failed");
@@ -479,8 +510,44 @@ finalize:
     return aconf;
 }
 
+int RunModeSetLiveCaptureWorkers(ConfigIfaceParserFunc ConfigParser,
+                              ConfigIfaceThreadsCountFunc ModThreadsCount,
+                              const char *recv_mod_name,
+                              const char *decode_mod_name, const char *thread_name,
+                              const char *live_dev)
+{
+    int nlive = LiveGetDeviceCount();
+    void *aconf;
+    int ldev;
 
-int RunModeSetLiveCaptureSingle(ConfigIfaceParserFunc ConfigParser,const char *recv_mod_name,
+    for (ldev = 0; ldev < nlive; ldev++) {
+        const char *live_dev_c = NULL;
+        if ((nlive <= 1) && (live_dev != NULL)) {
+            aconf = ConfigParser(live_dev);
+            live_dev_c = live_dev;
+            if (unlikely(live_dev_c == NULL)) {
+                FatalError(SC_ERR_MEM_ALLOC, "Can't allocate interface name");
+            }
+        } else {
+            live_dev_c = LiveGetDeviceName(ldev);
+            aconf = ConfigParser(live_dev_c);
+        }
+        RunModeSetLiveCaptureWorkersForDevice(ModThreadsCount,
+                recv_mod_name,
+                decode_mod_name,
+                thread_name,
+                live_dev_c,
+                aconf,
+                0);
+    }
+
+    return 0;
+}
+
+
+int RunModeSetLiveCaptureSingle(ConfigIfaceParserFunc ConfigParser,
+                                ConfigIfaceThreadsCountFunc ModThreadsCount,
+                                const char *recv_mod_name,
                                 const char *decode_mod_name, const char *thread_name,
                                 const char *live_dev)
 {
@@ -492,7 +559,7 @@ int RunModeSetLiveCaptureSingle(ConfigIfaceParserFunc ConfigParser,const char *r
         live_dev_c = live_dev;
     }
 
-    return RunModeSetLiveCaptureWorkersForDevice(
+    return RunModeSetLiveCaptureWorkersForDevice(ModThreadsCount,
             recv_mod_name,
             decode_mod_name,
             thread_name,
@@ -501,12 +568,18 @@ int RunModeSetLiveCaptureSingle(ConfigIfaceParserFunc ConfigParser,const char *r
             1);
 }
 
+static int AFPConfigGeThreadsCount(void *conf)
+{
+    AFPIfaceConfig *afp = (AFPIfaceConfig *)conf;
+    return afp->threads;
+}
+
 int RunModeIdsAFPSingle(void)
 {
     int ret;
     const char *live_dev = NULL;
 
-    //RunModeInitialize();
+    RunModeInitialize();
     TimeModeSetLive();
 
     extern char* g_in_iface;
@@ -521,6 +594,7 @@ int RunModeIdsAFPSingle(void)
 
     const char *thread_name_single = "W";
     ret = RunModeSetLiveCaptureSingle(ParseAFPConfig,
+                                      AFPConfigGeThreadsCount,
                                       "ReceiveAFP",
                                       "DecodeAFP", thread_name_single,
                                       live_dev);
@@ -533,11 +607,51 @@ int RunModeIdsAFPSingle(void)
     return (0);
 }
 
+int RunModeIdsAFPWorkers(void)
+{
+//#ifdef HAVE_AF_PACKET
+    int ret;
+    const char *live_dev = NULL;
+
+    RunModeInitialize();
+    TimeModeSetLive();
+
+    (void)ConfGet("af-packet.live-interface", &live_dev);
+
+    if (AFPPeersListInit() != TM_ECODE_OK) {
+        FatalError(SC_ERR_FATAL, "Unable to init peers list.");
+    }
+
+    ret = RunModeSetLiveCaptureWorkers(ParseAFPConfig,
+                                    AFPConfigGeThreadsCount,
+                                    "ReceiveAFP",
+                                    "DecodeAFP", thread_name_workers,
+                                    live_dev);
+    if (ret != 0) {
+        FatalError(SC_ERR_FATAL, "Unable to start runmode");
+    }
+
+    //modify by haolipeng
+    /* In IPS mode each threads must have a peer */
+    /*if (AFPPeersListCheck() != TM_ECODE_OK) {
+        FatalError(SC_ERR_FATAL, "Some IPS capture threads did not peer.");
+    }*/
+
+    SCLogDebug("RunModeIdsAFPWorkers initialised");
+
+//#endif /* HAVE_AF_PACKET */
+    return 0;
+}
+
 void RunModeIdsAFPRegister(void)
 {
     RunModeRegisterNewRunMode(RUNMODE_AFP_DEV, "single",
                               "Single threaded af-packet mode",
                               RunModeIdsAFPSingle);
-
+    
+    RunModeRegisterNewRunMode(RUNMODE_AFP_DEV, "workers",
+                                "Workers af-packet mode, each thread does all"
+                                " tasks from acquisition to logging",
+                                RunModeIdsAFPWorkers);
     return;
 }

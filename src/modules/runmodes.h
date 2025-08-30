@@ -3,6 +3,8 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
+
 /* Run mode */
 enum RunModes {
     RUNMODE_UNKNOWN = 0,
@@ -20,5 +22,14 @@ void RunModeRegisterRunModes(void);
 void RunModeDispatch(int runmode, const char *custom_mode);
 char *RunmodeGetActive(void);
 
+//运行模式初始化
+void RunModeInitialize(void);
 void RunModeInitializeOutputs(void);
+
+extern int threading_set_cpu_affinity;
+extern float threading_detect_ratio;
+extern uint64_t threading_set_stack_size;
+
+extern const char *thread_name_single;
+extern const char *thread_name_workers;
 #endif //NET_THREAT_DETECT_RUNMODES_H

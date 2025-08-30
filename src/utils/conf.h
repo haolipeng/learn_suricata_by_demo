@@ -33,6 +33,7 @@ ConfNode *ConfGetNode(const char *name);
 
 int ConfGet(const char *name, const char **vptr);
 int ConfGetValue(const char *name, const char **vptr);
+int ConfGetFloat(const char *name, float *val);
 int ConfGetInt(const char *name, intmax_t *val);
 int ConfGetBool(const char *name, int *val);
 

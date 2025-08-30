@@ -10,6 +10,13 @@
 #include "common/common.h"
 #include "app-layer/app-layer-protos.h"
 #include "output/output.h"
+#include "utils/util-misc.h"
+
+const char *thread_name_single = "W";
+const char *thread_name_workers = "W";
+
+int threading_set_cpu_affinity = FALSE;
+uint64_t threading_set_stack_size = 0;
 
 typedef struct RunMode_ {
     /* the runmode type */
@@ -45,6 +52,9 @@ void RunModeRegisterNewRunMode(enum RunModes runmode,
                                const char *description,
                                int (*RunModeFunc)(void))
 {
+    SCLogDebug("RunModeRegisterNewRunMode: registering runmode=%d, name=%s, description=%s", 
+               runmode, name, description);
+    
     void *ptmp = realloc(runmodes[runmode].runmodes,
                            (runmodes[runmode].cnt + 1) * sizeof(RunMode));
     if (ptmp == NULL) {
@@ -69,15 +79,32 @@ void RunModeRegisterNewRunMode(enum RunModes runmode,
     }
     mode->RunModeFunc = RunModeFunc;
 
+    SCLogDebug("RunModeRegisterNewRunMode: successfully registered runmodes[%d][%d] with name=%s", 
+               runmode, runmodes[runmode].cnt-1, mode->name);
+
     return;
 }
 
 void RunModeRegisterRunModes(void)
 {
+    SCLogDebug("RunModeRegisterRunModes: starting registration");
     memset(runmodes, 0, sizeof(runmodes));
 
     RunModeFilePcapRegister();
+    SCLogDebug("RunModeRegisterRunModes: after RunModeFilePcapRegister");
+    
     RunModeIdsAFPRegister();
+    SCLogDebug("RunModeRegisterRunModes: after RunModeIdsAFPRegister");
+    
+    // 打印所有注册的runmodes
+    for (int i = 0; i < RUNMODE_USER_MAX; i++) {
+        SCLogDebug("RunModeRegisterRunModes: runmodes[%d].cnt=%d", i, runmodes[i].cnt);
+        for (int j = 0; j < runmodes[i].cnt; j++) {
+            SCLogDebug("RunModeRegisterRunModes: runmodes[%d][%d].name=%s", 
+                       i, j, runmodes[i].runmodes[j].name ? runmodes[i].runmodes[j].name : "NULL");
+        }
+    }
+    
     return;
 }
 
@@ -88,11 +115,24 @@ char *RunmodeGetActive(void)
 
 static RunMode *RunModeGetCustomMode(enum RunModes runmode, const char *custom_mode)
 {
+    SCLogDebug("RunModeGetCustomMode: runmode=%d, custom_mode=%s, RUNMODE_USER_MAX=%d", 
+               runmode, custom_mode ? custom_mode : "NULL", RUNMODE_USER_MAX);
+    
     if (runmode < RUNMODE_USER_MAX) {
+        SCLogDebug("RunModeGetCustomMode: runmodes[%d].cnt=%d", runmode, runmodes[runmode].cnt);
+        
         for (int i = 0; i < runmodes[runmode].cnt; i++) {
-            if (strcmp(runmodes[runmode].runmodes[i].name, custom_mode) == 0)
+            SCLogDebug("RunModeGetCustomMode: checking runmodes[%d][%d].name=%s", 
+                       runmode, i, runmodes[runmode].runmodes[i].name ? runmodes[runmode].runmodes[i].name : "NULL");
+            
+            if (strcmp(runmodes[runmode].runmodes[i].name, custom_mode) == 0) {
+                SCLogDebug("RunModeGetCustomMode: found matching mode at index %d", i);
                 return &runmodes[runmode].runmodes[i];
+            }
         }
+        SCLogDebug("RunModeGetCustomMode: no matching mode found");
+    } else {
+        SCLogDebug("RunModeGetCustomMode: runmode %d >= RUNMODE_USER_MAX %d", runmode, RUNMODE_USER_MAX);
     }
     return NULL;
 }
@@ -351,4 +391,45 @@ void RunModeInitializeOutputs(void)
     /* register the logger bits to the app-layer */
 
     OutputSetupActiveLoggers();
+}
+
+/**
+ * Initialize multithreading settings.
+ */
+float threading_detect_ratio = 1;
+
+void RunModeInitialize(void)
+{
+    threading_set_cpu_affinity = FALSE;
+    if ((ConfGetBool("threading.set-cpu-affinity", &threading_set_cpu_affinity)) == 0) {
+        threading_set_cpu_affinity = FALSE;
+    }
+    /* try to get custom cpu mask value if needed */
+    if (threading_set_cpu_affinity == TRUE) {
+        //modify by haolipeng
+        //AffinitySetupLoadFromConfig();
+    }
+    if ((ConfGetFloat("threading.detect-thread-ratio", &threading_detect_ratio)) != 1) {
+        if (ConfGetNode("threading.detect-thread-ratio") != NULL)
+            WarnInvalidConfEntry("threading.detect-thread-ratio", "%s", "1");
+        threading_detect_ratio = 1;
+    }
+
+    SCLogDebug("threading.detect-thread-ratio %f", threading_detect_ratio);
+
+    /*
+     * Check if there's a configuration setting for the per-thread stack size
+     * in case the default per-thread stack size is to be adjusted
+     */
+    const char *ss = NULL;
+    if ((ConfGetValue("threading.stack-size", &ss)) == 1) {
+        if (ss != NULL) {
+            if (ParseSizeStringU64(ss, &threading_set_stack_size) < 0) {
+                FatalError(SC_ERR_INVALID_ARGUMENT,
+                        "Failed to initialize thread_stack_size output, invalid limit: %s", ss);
+            }
+        }
+    }
+
+    SCLogDebug("threading.stack-size %" PRIu64, threading_set_stack_size);
 }
