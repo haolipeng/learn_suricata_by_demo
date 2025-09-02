@@ -1,6 +1,9 @@
 #include <stdio.h>
+#include <errno.h>
 #include <linux/if_packet.h>
 #include <unistd.h>
+
+#include "common/autoconf.h" //引入宏变量
 
 #include "runmode-af-packet.h"
 #include "modules/tm-threads.h"
@@ -30,8 +33,8 @@ static int RunModeSetLiveCaptureWorkersForDevice(ConfigIfaceThreadsCountFunc Mod
                               unsigned char single_mode)
 {
     int threads_count;
-    //uint16_t thread_max = TmThreadsGetWorkerThreadMax();
     //modify by haolipeng
+    //uint16_t thread_max = TmThreadsGetWorkerThreadMax();
     uint16_t thread_max = 32;
 
     if (single_mode) {
@@ -100,6 +103,7 @@ static int RunModeSetLiveCaptureWorkersForDevice(ConfigIfaceThreadsCountFunc Mod
         */
 
         //modify by haolipeng
+        //暂时注释掉TmThreadSetCPU，不设置cpu亲和性只影响性能，不影响功能
         //TmThreadSetCPU(tv, WORKER_CPU_SET);
 
         if (TmThreadSpawn(tv) != TM_ECODE_OK) {
@@ -609,7 +613,6 @@ int RunModeIdsAFPSingle(void)
 
 int RunModeIdsAFPWorkers(void)
 {
-//#ifdef HAVE_AF_PACKET
     int ret;
     const char *live_dev = NULL;
 
@@ -638,8 +641,6 @@ int RunModeIdsAFPWorkers(void)
     }*/
 
     SCLogDebug("RunModeIdsAFPWorkers initialised");
-
-//#endif /* HAVE_AF_PACKET */
     return 0;
 }
 

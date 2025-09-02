@@ -1,33 +1,8 @@
 #ifndef __THREADS_H__
 #define __THREADS_H__
 
-#include "common/autoconf.h"
-
-#if defined(TLS_C11)
-#define thread_local _Thread_local
-#elif defined(TLS_GNU)
 #define thread_local __thread
-#else
-#error "No supported thread local type found"
-#endif
-
-/* need this for the _POSIX_SPIN_LOCKS define */
-#if HAVE_UNISTD_H
 #include <unistd.h>
-#endif
-
-#if defined OS_FREEBSD || __OpenBSD__
-
-#if ! defined __OpenBSD__
-#include <sys/thr.h>
-#endif
-enum {
-    PRIO_LOW = 2,
-    PRIO_MEDIUM = 0,
-    PRIO_HIGH = -2,
-};
-
-#else /* LINUX */
 
 #if HAVE_SYS_SYSCALL_H
 #include <sys/syscall.h>
@@ -42,8 +17,6 @@ enum {
     PRIO_MEDIUM = 0,
     PRIO_HIGH = -2,
 };
-
-#endif /* OS_FREEBSD */
 
 #include <pthread.h>
 

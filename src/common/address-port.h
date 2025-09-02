@@ -1,7 +1,9 @@
 #ifndef NET_THREAT_DETECT_ADDRESS_PORT_H
 #define NET_THREAT_DETECT_ADDRESS_PORT_H
+
 #include <netinet/ip.h>
 #include <stdint.h>
+
 
 /* Address */
 typedef struct Address_ {

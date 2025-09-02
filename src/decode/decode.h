@@ -6,6 +6,7 @@
 #include <pcap/dlt.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <netinet/ip.h>
 
 #include "decode-events.h"
 #include "common/address-port.h"

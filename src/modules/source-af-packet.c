@@ -1,3 +1,4 @@
+#include "common/autoconf.h"
 #include <errno.h>
 #include <linux/if_ether.h>
 #include <linux/if_packet.h>
@@ -12,7 +13,6 @@
 
 #define __USE_GNU
 #include <bits/poll.h>
-#include "common/autoconf.h"
 
 #include "source-af-packet.h"
 #include "decode/decode-vlan.h"
@@ -676,6 +676,7 @@ static inline int AFPWalkBlock(AFPThreadVars *ptv, struct tpacket_block_desc *pb
   return (AFP_READ_OK);
 }
 
+#ifdef HAVE_TPACKET_V3
 static int AFPReadFromRingV3(AFPThreadVars *ptv)
 {
     struct tpacket_block_desc *pbd;
@@ -711,6 +712,7 @@ static int AFPReadFromRingV3(AFPThreadVars *ptv)
 
     return (AFP_READ_OK);
 }
+#endif
 
 static inline int AFPReadFromRingWaitForPacket(AFPThreadVars *ptv)
 {
@@ -1167,7 +1169,12 @@ TmEcode ReceiveAFPLoop(ThreadVars *tv, void *data, void *slot)
 
     if (ptv->flags & AFP_RING_MODE) {
         if (ptv->flags & AFP_TPACKET_V3) {
+#ifdef HAVE_TPACKET_V3
             AFPReadFunc = AFPReadFromRingV3;
+#else
+            SCLogError(SC_ERR_AFP_CREATE, "TPACKET_V3 not supported on this system");
+            return (TM_ECODE_FAILED);
+#endif
         } else {
             AFPReadFunc = AFPReadFromRing;
         }

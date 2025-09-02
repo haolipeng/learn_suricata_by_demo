@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <string.h>
+#include <errno.h>
 #include <jansson.h>
 #include <sys/stat.h>
 #include "util-logopenfile.h"

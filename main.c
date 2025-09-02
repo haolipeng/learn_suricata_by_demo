@@ -62,6 +62,9 @@ volatile uint8_t suricata_ctl_flags = 0;
 /** Suricata instance */
 SCInstance suricata;
 
+/** 运行模式 */
+int run_mode = RUNMODE_UNKNOWN;
+
 static void SCInstanceInit(SCInstance *suri, const char *progname)
 {
     memset(suri, 0x00, sizeof(*suri));
@@ -90,6 +93,10 @@ static int ParseCommandLineAfpacket(SCInstance *suri, const char *in_arg)
 {
   if (suri->run_mode == RUNMODE_UNKNOWN) {
       suri->run_mode = RUNMODE_AFP_DEV;
+      // 为AF_PACKET模式设置默认的custom_mode为"workers"
+      if (suri->runmode_custom_mode == NULL) {
+          suri->runmode_custom_mode = strdup("workers");
+      }
       if (in_arg) {
           LiveRegisterDeviceName(in_arg);
           memset(suri->pcap_dev, 0, sizeof(suri->pcap_dev));
@@ -198,7 +205,7 @@ int InitGlobal(void){
     //2.初始化日志系统 - 设置为debug级别
     SCLogInitData log_init_data;
     memset(&log_init_data, 0, sizeof(log_init_data));
-    log_init_data.global_log_level = SC_LOG_DEBUG;  // 设置为debug级别
+    //log_init_data.global_log_level = SC_LOG_DEBUG;  // 设置为debug级别
     SCLogInitLogModule(&log_init_data);
 
     //3.初始化util-misc
@@ -359,6 +366,7 @@ void PreRunPostPrivsDropInit(const int runmode)
 
 int PostConfLoadedSetup(SCInstance *suri)
 {
+    //modify by haolipeng
     //TODO:load the pattern matchers
 
     //Get custom runmode
@@ -434,20 +442,47 @@ void EngineStop(void)
     suricata_ctl_flags |= SURICATA_STOP;
 }
 
+static int FinalizeRunMode(SCInstance *suri, char **argv)
+{
+    switch (suri->run_mode) {
+        case RUNMODE_UNKNOWN:
+            //PrintUsage(argv[0]);
+            return TM_ECODE_FAILED;
+        default:
+            break;
+    }
+    /* Set the global run mode and offline flag. */
+    run_mode = suri->run_mode;
+
+    //modify by haolipeng
+    /* if (!CheckValidDaemonModes(suri->daemon, suri->run_mode)) {
+        return TM_ECODE_FAILED;
+    } */
+
+    return TM_ECODE_OK;
+}
+
 int main(int argc, char *argv[])
 {
     int ret = 0;
     //1.Instance init
     SCInstanceInit(&suricata, argv[0]);
 
-    //2.Global init
+    //2.初始化全局变量
     ret = InitGlobal();
     if(ret != 0){
         exit(EXIT_FAILURE);
     }
 
     //3.解析程序命令行参数
-    ParseCommandLine(argc, argv, &suricata);
+    if(ParseCommandLine(argc, argv, &suricata) != TM_ECODE_OK){
+        exit(EXIT_FAILURE);
+    }
+
+    //4.FinalizeRunMode
+    if(FinalizeRunMode(&suricata, argv) != TM_ECODE_OK){
+        exit(EXIT_FAILURE);
+    }
 
     //4.Load yaml configuration file if provided.
     if (LoadYamlConfig(&suricata) != TM_ECODE_OK) {

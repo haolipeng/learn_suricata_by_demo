@@ -87,14 +87,10 @@ void RunModeRegisterNewRunMode(enum RunModes runmode,
 
 void RunModeRegisterRunModes(void)
 {
-    SCLogDebug("RunModeRegisterRunModes: starting registration");
     memset(runmodes, 0, sizeof(runmodes));
 
     RunModeFilePcapRegister();
-    SCLogDebug("RunModeRegisterRunModes: after RunModeFilePcapRegister");
-    
     RunModeIdsAFPRegister();
-    SCLogDebug("RunModeRegisterRunModes: after RunModeIdsAFPRegister");
     
     // 打印所有注册的runmodes
     for (int i = 0; i < RUNMODE_USER_MAX; i++) {

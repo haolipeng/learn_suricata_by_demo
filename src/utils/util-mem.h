@@ -6,6 +6,5 @@
 #define SCRealloc realloc
 #define SCFree free
 #define SCStrdup strdup
-#define SCStrndup strndup
 
 #endif //NET_THREAT_DETECT_UTIL_MEM_H

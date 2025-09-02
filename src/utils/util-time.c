@@ -5,6 +5,7 @@
 #include <stdbool.h>
 #include <sys/time.h>
 #include <stdio.h>
+#include <errno.h>
 
 // static SCMutex current_time_mutex = SCMUTEX_INITIALIZER;
 static SCSpinlock current_time_spinlock;
